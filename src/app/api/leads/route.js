@@ -1,6 +1,13 @@
 import { NextResponse } from 'next/server'
 import supabase from '@/lib/supabase'
 
+export async function GET() {
+  const { count, error } = await supabase
+    .from('leads')
+    .select('*', { count: 'exact', head: true })
+  return NextResponse.json({ count: error ? 0 : (count || 0) })
+}
+
 export async function POST(request) {
   const { email, corridor, voted_app, expected_rate } = await request.json()
 

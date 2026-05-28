@@ -1,15 +1,14 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 // ── Data ──────────────────────────────────────────────────────────────────────
 
 const CORRIDORS = {
   'GBP-NGN': {
-    id: 'GBP-NGN',
-    label: 'GBP → NGN',
-    from: 'GBP', fromFlag: '🇬🇧',
-    to: 'NGN',   toFlag: '🇳🇬',
-    midmarket: 2120,
+    id: 'GBP-NGN', label: 'GBP → NGN',
+    from: 'GBP', fromFlag: '🇬🇧', to: 'NGN', toFlag: '🇳🇬',
+    midmarket: 2120, unitAmount: 1,
+    rateLabel: 'NGN per 1 GBP', ratePlaceholder: 'e.g. 2150',
     apps: [
       { id: 'wise',         name: 'Wise',          rate: 2087, color: '#4ade80' },
       { id: 'lemfi',        name: 'LemFi',         rate: 2095, color: '#f59e0b' },
@@ -20,11 +19,10 @@ const CORRIDORS = {
     ],
   },
   'GBP-GHS': {
-    id: 'GBP-GHS',
-    label: 'GBP → GHS',
-    from: 'GBP', fromFlag: '🇬🇧',
-    to: 'GHS',   toFlag: '🇬🇭',
-    midmarket: 18.20,
+    id: 'GBP-GHS', label: 'GBP → GHS',
+    from: 'GBP', fromFlag: '🇬🇧', to: 'GHS', toFlag: '🇬🇭',
+    midmarket: 18.20, unitAmount: 1,
+    rateLabel: 'GHS per 1 GBP', ratePlaceholder: 'e.g. 18.50',
     apps: [
       { id: 'wise',         name: 'Wise',          rate: 17.85, color: '#4ade80' },
       { id: 'lemfi',        name: 'LemFi',         rate: 17.92, color: '#f59e0b' },
@@ -35,11 +33,10 @@ const CORRIDORS = {
     ],
   },
   'EUR-NGN': {
-    id: 'EUR-NGN',
-    label: 'EUR → NGN',
-    from: 'EUR', fromFlag: '🇪🇺',
-    to: 'NGN',   toFlag: '🇳🇬',
-    midmarket: 1820,
+    id: 'EUR-NGN', label: 'EUR → NGN',
+    from: 'EUR', fromFlag: '🇪🇺', to: 'NGN', toFlag: '🇳🇬',
+    midmarket: 1820, unitAmount: 1,
+    rateLabel: 'NGN per 1 EUR', ratePlaceholder: 'e.g. 1850',
     apps: [
       { id: 'wise',         name: 'Wise',          rate: 1785, color: '#4ade80' },
       { id: 'lemfi',        name: 'LemFi',         rate: 1792, color: '#f59e0b' },
@@ -50,11 +47,10 @@ const CORRIDORS = {
     ],
   },
   'EUR-GHS': {
-    id: 'EUR-GHS',
-    label: 'EUR → GHS',
-    from: 'EUR', fromFlag: '🇪🇺',
-    to: 'GHS',   toFlag: '🇬🇭',
-    midmarket: 15.60,
+    id: 'EUR-GHS', label: 'EUR → GHS',
+    from: 'EUR', fromFlag: '🇪🇺', to: 'GHS', toFlag: '🇬🇭',
+    midmarket: 15.60, unitAmount: 1,
+    rateLabel: 'GHS per 1 EUR', ratePlaceholder: 'e.g. 15.80',
     apps: [
       { id: 'wise',         name: 'Wise',          rate: 15.25, color: '#4ade80' },
       { id: 'lemfi',        name: 'LemFi',         rate: 15.32, color: '#f59e0b' },
@@ -64,6 +60,81 @@ const CORRIDORS = {
       { id: 'westernunion', name: 'Western Union', rate: 14.90, color: '#fbbf24' },
     ],
   },
+}
+
+const RECEIVE_CORRIDORS = {
+  'NGN-GBP': {
+    id: 'NGN-GBP', label: 'NGN → GBP',
+    from: 'NGN', fromFlag: '🇳🇬', to: 'GBP', toFlag: '🇬🇧',
+    midmarket: 47.17, unitAmount: 100000,
+    rateLabel: 'GBP per 100,000 NGN', ratePlaceholder: 'e.g. 46.50',
+    apps: [
+      { id: 'lemfi',        name: 'LemFi',         rate: 46.60, color: '#f59e0b' },
+      { id: 'sendwave',     name: 'Sendwave',      rate: 46.40, color: '#34d399' },
+      { id: 'wise',         name: 'Wise',          rate: 46.20, color: '#4ade80' },
+      { id: 'remitly',      name: 'Remitly',       rate: 45.85, color: '#f87171' },
+      { id: 'worldremit',   name: 'WorldRemit',    rate: 45.40, color: '#a78bfa' },
+      { id: 'westernunion', name: 'Western Union', rate: 44.75, color: '#fbbf24' },
+    ],
+  },
+  'GHS-GBP': {
+    id: 'GHS-GBP', label: 'GHS → GBP',
+    from: 'GHS', fromFlag: '🇬🇭', to: 'GBP', toFlag: '🇬🇧',
+    midmarket: 54.95, unitAmount: 1000,
+    rateLabel: 'GBP per 1,000 GHS', ratePlaceholder: 'e.g. 54.50',
+    apps: [
+      { id: 'lemfi',        name: 'LemFi',         rate: 54.20, color: '#f59e0b' },
+      { id: 'sendwave',     name: 'Sendwave',      rate: 54.00, color: '#34d399' },
+      { id: 'wise',         name: 'Wise',          rate: 53.75, color: '#4ade80' },
+      { id: 'remitly',      name: 'Remitly',       rate: 53.45, color: '#f87171' },
+      { id: 'worldremit',   name: 'WorldRemit',    rate: 52.85, color: '#a78bfa' },
+      { id: 'westernunion', name: 'Western Union', rate: 52.15, color: '#fbbf24' },
+    ],
+  },
+  'NGN-EUR': {
+    id: 'NGN-EUR', label: 'NGN → EUR',
+    from: 'NGN', fromFlag: '🇳🇬', to: 'EUR', toFlag: '🇪🇺',
+    midmarket: 54.95, unitAmount: 100000,
+    rateLabel: 'EUR per 100,000 NGN', ratePlaceholder: 'e.g. 54.00',
+    apps: [
+      { id: 'lemfi',        name: 'LemFi',         rate: 54.10, color: '#f59e0b' },
+      { id: 'sendwave',     name: 'Sendwave',      rate: 53.85, color: '#34d399' },
+      { id: 'wise',         name: 'Wise',          rate: 53.50, color: '#4ade80' },
+      { id: 'remitly',      name: 'Remitly',       rate: 53.15, color: '#f87171' },
+      { id: 'worldremit',   name: 'WorldRemit',    rate: 52.55, color: '#a78bfa' },
+      { id: 'westernunion', name: 'Western Union', rate: 51.80, color: '#fbbf24' },
+    ],
+  },
+  'GHS-EUR': {
+    id: 'GHS-EUR', label: 'GHS → EUR',
+    from: 'GHS', fromFlag: '🇬🇭', to: 'EUR', toFlag: '🇪🇺',
+    midmarket: 64.10, unitAmount: 1000,
+    rateLabel: 'EUR per 1,000 GHS', ratePlaceholder: 'e.g. 63.50',
+    apps: [
+      { id: 'lemfi',        name: 'LemFi',         rate: 63.20, color: '#f59e0b' },
+      { id: 'sendwave',     name: 'Sendwave',      rate: 63.00, color: '#34d399' },
+      { id: 'wise',         name: 'Wise',          rate: 62.65, color: '#4ade80' },
+      { id: 'remitly',      name: 'Remitly',       rate: 62.25, color: '#f87171' },
+      { id: 'worldremit',   name: 'WorldRemit',    rate: 61.55, color: '#a78bfa' },
+      { id: 'westernunion', name: 'Western Union', rate: 60.75, color: '#fbbf24' },
+    ],
+  },
+}
+
+const ALL_CORRIDORS = { ...CORRIDORS, ...RECEIVE_CORRIDORS }
+
+const CURRENCY_META = {
+  GBP: { symbol: '£', flag: '🇬🇧', name: 'British Pound',  decimals: 2 },
+  EUR: { symbol: '€', flag: '🇪🇺', name: 'Euro',           decimals: 2 },
+  NGN: { symbol: '₦', flag: '🇳🇬', name: 'Nigerian Naira', decimals: 0 },
+  GHS: { symbol: '₵', flag: '🇬🇭', name: 'Ghanaian Cedi',  decimals: 2 },
+}
+
+const VALID_DESTINATIONS = {
+  GBP: ['NGN', 'GHS'],
+  EUR: ['NGN', 'GHS'],
+  NGN: ['GBP', 'EUR'],
+  GHS: ['GBP', 'EUR'],
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -81,7 +152,85 @@ function spreadColor(pct) {
   return '#f87171'
 }
 
+function formatConverted(value, currency) {
+  const { symbol, decimals } = CURRENCY_META[currency]
+  if (decimals === 0) return symbol + Math.round(value).toLocaleString('en-GB')
+  return symbol + value.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
 // ── Sub-components ────────────────────────────────────────────────────────────
+
+function BottomGlow() {
+  return (
+    <div style={{
+      position: 'fixed', bottom: 0, left: 0, right: 0,
+      height: 320,
+      background: 'radial-gradient(ellipse 90% 70% at 50% 100%, rgba(59,130,246,0.20) 0%, rgba(37,99,235,0.07) 45%, transparent 70%)',
+      pointerEvents: 'none',
+      zIndex: 1,
+    }} />
+  )
+}
+
+const COUNTER_SEED = 1247
+
+function LiveCounter() {
+  const [display, setDisplay]   = useState(0)
+  const [target, setTarget]     = useState(COUNTER_SEED)
+  const [done, setDone]         = useState(false)
+  const rafRef                  = useRef(null)
+
+  useEffect(() => {
+    fetch('/api/leads')
+      .then(r => r.json())
+      .then(d => { if (d.count > 0) setTarget(d.count) })
+      .catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    const duration = 1600
+    const startTs  = performance.now()
+
+    function tick(now) {
+      const progress = Math.min((now - startTs) / duration, 1)
+      const eased    = 1 - Math.pow(1 - progress, 3)
+      setDisplay(Math.round(target * eased))
+      if (progress < 1) {
+        rafRef.current = requestAnimationFrame(tick)
+      } else {
+        setDisplay(target)
+        setDone(true)
+      }
+    }
+
+    rafRef.current = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(rafRef.current)
+  }, [target])
+
+  const formatted = display.toLocaleString('en-GB')
+  const body      = done ? formatted.slice(0, -1) : formatted
+  const last      = done ? formatted.slice(-1)    : null
+
+  return (
+    <div style={{ marginBottom: 32, textAlign: 'center' }}>
+      <div style={{
+        fontSize: 'clamp(48px, 8vw, 72px)', fontWeight: 800,
+        letterSpacing: '-2px', lineHeight: 1,
+        color: '#ffffff', fontVariantNumeric: 'tabular-nums',
+      }}>
+        {body}
+        {last && (
+          <span style={{ animation: 'digitPulse 1.5s ease-in-out infinite' }}>
+            {last}
+          </span>
+        )}
+      </div>
+      <p style={{ fontSize: 13, color: '#475569', marginTop: 10, letterSpacing: '0.2px' }}>
+        diaspora members waiting for better rates
+      </p>
+    </div>
+  )
+}
 
 function Navbar() {
   return (
@@ -90,9 +239,9 @@ function Navbar() {
       background: 'rgba(8,8,15,0.85)',
       backdropFilter: 'blur(12px)',
       borderBottom: '1px solid rgba(255,255,255,0.06)',
-      padding: '0 24px',
-      height: 60,
+      padding: '0 24px', height: 60,
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      animation: 'fadeUp 0.6s ease both',
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <div style={{
@@ -111,67 +260,202 @@ function Navbar() {
   )
 }
 
-function CorridorTabs({ active, onChange }) {
+function CurrencySelect({ value, onChange, currencies }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+
+  useEffect(() => {
+    if (!open) return
+    function handler(e) {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  const meta = CURRENCY_META[value]
+
   return (
-    <div style={{
-      display: 'flex', gap: 8, justifyContent: 'center',
-      flexWrap: 'wrap', padding: '0 24px',
-    }}>
-      {Object.values(CORRIDORS).map(c => {
-        const isActive = active === c.id
-        return (
-          <button
-            key={c.id}
-            onClick={() => onChange(c.id)}
-            style={{
-              padding: '10px 22px',
-              borderRadius: 50,
-              border: isActive ? '1px solid #3b82f6' : '1px solid rgba(255,255,255,0.1)',
-              background: isActive ? 'rgba(59,130,246,0.15)' : 'rgba(255,255,255,0.03)',
-              color: isActive ? '#60a5fa' : '#94a3b8',
-              fontSize: 14, fontWeight: isActive ? 600 : 400,
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {c.fromFlag} {c.label} {c.toFlag}
-          </button>
-        )
-      })}
+    <div ref={ref} style={{ position: 'relative' }}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 6,
+          padding: '10px 12px',
+          background: 'rgba(255,255,255,0.06)',
+          border: '1px solid rgba(255,255,255,0.1)',
+          borderRadius: 10,
+          color: '#e2e8f0', fontSize: 14, fontWeight: 600,
+          cursor: 'pointer', whiteSpace: 'nowrap', userSelect: 'none',
+        }}
+      >
+        <span style={{ fontSize: 16, lineHeight: 1 }}>{meta.flag}</span>
+        <span>{value}</span>
+        <svg
+          width="11" height="11" viewBox="0 0 24 24"
+          fill="none" stroke="#64748b" strokeWidth="2.5"
+          style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s', flexShrink: 0 }}
+        >
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </button>
+      {open && (
+        <div style={{
+          position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 200,
+          background: '#0f0f1e',
+          border: '1px solid rgba(255,255,255,0.12)',
+          borderRadius: 12, overflow: 'hidden', minWidth: 190,
+          boxShadow: '0 8px 32px rgba(0,0,0,0.7)',
+        }}>
+          {currencies.map(code => {
+            const m = CURRENCY_META[code]
+            const active = code === value
+            return (
+              <button
+                key={code}
+                onClick={() => { onChange(code); setOpen(false) }}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  width: '100%', padding: '11px 14px', border: 'none',
+                  background: active ? 'rgba(59,130,246,0.15)' : 'transparent',
+                  color: active ? '#60a5fa' : '#e2e8f0',
+                  fontSize: 14, fontWeight: active ? 600 : 400,
+                  cursor: 'pointer', textAlign: 'left',
+                }}
+                onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'rgba(255,255,255,0.05)' }}
+                onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent' }}
+              >
+                <span style={{ fontSize: 18, lineHeight: 1 }}>{m.flag}</span>
+                <span style={{ fontWeight: 600, minWidth: 32 }}>{code}</span>
+                <span style={{ fontSize: 12, color: '#475569' }}>{m.name}</span>
+              </button>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }
 
-function MidMarketBar({ corridor }) {
-  const c = CORRIDORS[corridor]
-  const formatted = formatRate(c.midmarket, c.to)
+function CurrencyBar({ amount, fromCurrency, toCurrency, onAmountChange, onFromChange, onToChange, onSwap }) {
+  const fromMeta  = CURRENCY_META[fromCurrency]
+  const validDests = VALID_DESTINATIONS[fromCurrency]
+
   return (
     <div style={{
-      maxWidth: 900, margin: '0 auto', padding: '0 24px',
+      display: 'flex', alignItems: 'center', gap: 8,
+      background: '#0d0d1a',
+      border: '1px solid rgba(59,130,246,0.22)',
+      borderRadius: 20, padding: 8,
+      maxWidth: 700, margin: '0 auto 36px',
+      boxShadow: '0 4px 32px rgba(0,0,0,0.5), 0 0 0 1px rgba(59,130,246,0.06)',
     }}>
+      {/* Left: amount input + from currency selector */}
       <div style={{
-        background: 'rgba(59,130,246,0.07)',
-        border: '1px solid rgba(59,130,246,0.2)',
-        borderRadius: 12,
-        padding: '14px 20px',
-        display: 'flex', alignItems: 'center', gap: 12,
-        flexWrap: 'wrap',
+        display: 'flex', alignItems: 'center', flex: 1, minWidth: 0,
+        background: 'rgba(255,255,255,0.04)',
+        border: '1px solid rgba(255,255,255,0.08)',
+        borderRadius: 14, overflow: 'hidden',
       }}>
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 8,
-          fontSize: 13, color: '#94a3b8',
+        <span style={{
+          padding: '0 4px 0 16px',
+          fontSize: 20, fontWeight: 700, color: '#64748b',
+          userSelect: 'none', flexShrink: 0, lineHeight: 1,
         }}>
+          {fromMeta.symbol}
+        </span>
+        <input
+          type="number"
+          value={amount}
+          onChange={e => onAmountChange(e.target.value)}
+          placeholder="100"
+          min="0"
+          style={{
+            flex: 1, minWidth: 0,
+            padding: '14px 8px',
+            background: 'transparent', border: 'none',
+            color: '#ffffff', fontSize: 22, fontWeight: 700,
+            letterSpacing: '-0.5px', fontVariantNumeric: 'tabular-nums',
+          }}
+        />
+        <div style={{ padding: '0 8px', borderLeft: '1px solid rgba(255,255,255,0.06)', flexShrink: 0 }}>
+          <CurrencySelect
+            value={fromCurrency}
+            onChange={onFromChange}
+            currencies={Object.keys(CURRENCY_META)}
+          />
+        </div>
+      </div>
+
+      {/* Swap button */}
+      <button
+        onClick={onSwap}
+        style={{
+          width: 44, height: 44, borderRadius: 12, flexShrink: 0,
+          background: 'rgba(59,130,246,0.1)',
+          border: '1px solid rgba(59,130,246,0.22)',
+          color: '#60a5fa', fontSize: 18,
+          cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          transition: 'background 0.15s, transform 0.2s',
+        }}
+        onMouseEnter={e => {
+          e.currentTarget.style.background = 'rgba(59,130,246,0.22)'
+          e.currentTarget.style.transform = 'rotate(180deg)'
+        }}
+        onMouseLeave={e => {
+          e.currentTarget.style.background = 'rgba(59,130,246,0.1)'
+          e.currentTarget.style.transform = 'rotate(0deg)'
+        }}
+      >
+        ↔
+      </button>
+
+      {/* Right: to currency selector */}
+      <div style={{
+        flexShrink: 0,
+        background: 'rgba(255,255,255,0.04)',
+        border: '1px solid rgba(255,255,255,0.08)',
+        borderRadius: 14, padding: '0 8px',
+        display: 'flex', alignItems: 'center',
+      }}>
+        <CurrencySelect
+          value={toCurrency}
+          onChange={onToChange}
+          currencies={validDests}
+        />
+      </div>
+    </div>
+  )
+}
+
+function MidMarketBar({ c, direction }) {
+  const fromLabel = c.unitAmount === 1
+    ? `1 ${c.from}`
+    : `${c.unitAmount.toLocaleString()} ${c.from}`
+  const formatted = formatRate(c.midmarket, c.to)
+  const blurb = direction === 'sending'
+    ? 'Every app below charges a spread on this. The gap is their fee.'
+    : 'Apps take a cut — the more GBP/EUR you receive per unit sent, the better the deal.'
+
+  return (
+    <div style={{ maxWidth: 900, margin: '0 auto', padding: '0 24px' }}>
+      <div style={{
+        background: 'rgba(59,130,246,0.07)', border: '1px solid rgba(59,130,246,0.2)',
+        borderRadius: 12, padding: '14px 20px',
+        display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#94a3b8' }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2">
             <circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>
           </svg>
           <span>Mid-market rate</span>
         </div>
         <span style={{ fontSize: 15, fontWeight: 700, color: '#ffffff' }}>
-          1 {c.from} = {formatted} {c.to}
+          {fromLabel} = {formatted} {c.to}
         </span>
         <span style={{ fontSize: 12, color: '#475569', marginLeft: 'auto' }}>
-          Every app below charges a spread on this. The gap is their fee.
+          {blurb}
         </span>
       </div>
     </div>
@@ -189,93 +473,88 @@ function VoteBar({ label, pct, color, isVoted }) {
       </div>
       <div style={{ height: 4, background: 'rgba(255,255,255,0.07)', borderRadius: 2, overflow: 'hidden' }}>
         <div style={{
-          height: '100%',
-          width: `${pct}%`,
+          height: '100%', width: `${pct}%`,
           background: isVoted ? '#3b82f6' : 'rgba(255,255,255,0.2)',
-          borderRadius: 2,
-          transition: 'width 0.8s cubic-bezier(0.34,1.56,0.64,1)',
+          borderRadius: 2, transition: 'width 0.8s cubic-bezier(0.34,1.56,0.64,1)',
         }} />
       </div>
     </div>
   )
 }
 
-function RateCard({ app, corridor, midmarket, to, from, rank, totalApps, hasVoted, votedApp, votes, totalVotes, onVote, voteLoading }) {
+function RateCard({ app, midmarket, to, from, rateLabel, unitAmount, inputAmount, rank, hasVoted, votedApp, votes, totalVotes, onVote, voteLoading, fastAnim }) {
   const spread = ((app.rate - midmarket) / midmarket) * 100
   const isBest = rank === 0
   const isVotedApp = votedApp === app.id
   const appVoteCount = votes.find(v => v.app_id === app.id)?.count || 0
   const votePct = totalVotes > 0 ? Math.round((appVoteCount / totalVotes) * 100) : 0
+  const showConverted = inputAmount > 0
+  const convertedValue = (inputAmount / unitAmount) * app.rate
 
   return (
-    <div style={{
-      background: '#0d0d1a',
-      border: `1px solid ${isVotedApp ? '#3b82f6' : 'rgba(255,255,255,0.07)'}`,
-      borderRadius: 16,
-      padding: '22px 22px 18px',
-      display: 'flex', flexDirection: 'column', gap: 0,
-      transition: 'border-color 0.3s, transform 0.2s, box-shadow 0.2s',
-      boxShadow: isVotedApp ? '0 0 0 1px rgba(59,130,246,0.3), 0 8px 32px rgba(59,130,246,0.1)' : '0 1px 3px rgba(0,0,0,0.3)',
-      animation: 'fadeUp 0.4s ease forwards',
-      animationDelay: `${rank * 60}ms`,
-      opacity: 0,
-    }}
+    <div
+      style={{
+        background: '#0d0d1a',
+        border: `1px solid ${isVotedApp ? '#3b82f6' : 'rgba(255,255,255,0.07)'}`,
+        borderRadius: 16, padding: '22px 22px 18px',
+        display: 'flex', flexDirection: 'column', gap: 0,
+        transition: 'border-color 0.3s, transform 0.2s, box-shadow 0.2s',
+        boxShadow: isVotedApp ? '0 0 0 1px rgba(59,130,246,0.3), 0 8px 32px rgba(59,130,246,0.1)' : '0 1px 3px rgba(0,0,0,0.3)',
+        animation: fastAnim ? 'fadeUp 0.12s ease both' : 'fadeUp 0.5s ease both',
+        animationDelay: fastAnim ? `${rank * 20}ms` : `${760 + rank * 70}ms`,
+      }}
       onMouseEnter={e => {
         if (!isVotedApp) e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)'
         e.currentTarget.style.transform = 'translateY(-2px)'
-        e.currentTarget.style.boxShadow = isVotedApp ? '0 0 0 1px rgba(59,130,246,0.4), 0 12px 40px rgba(59,130,246,0.15)' : '0 8px 24px rgba(0,0,0,0.4)'
+        e.currentTarget.style.boxShadow = isVotedApp
+          ? '0 0 0 1px rgba(59,130,246,0.4), 0 12px 40px rgba(59,130,246,0.15)'
+          : '0 8px 24px rgba(0,0,0,0.4)'
       }}
       onMouseLeave={e => {
         if (!isVotedApp) e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)'
         e.currentTarget.style.transform = 'translateY(0)'
-        e.currentTarget.style.boxShadow = isVotedApp ? '0 0 0 1px rgba(59,130,246,0.3), 0 8px 32px rgba(59,130,246,0.1)' : '0 1px 3px rgba(0,0,0,0.3)'
+        e.currentTarget.style.boxShadow = isVotedApp
+          ? '0 0 0 1px rgba(59,130,246,0.3), 0 8px 32px rgba(59,130,246,0.1)'
+          : '0 1px 3px rgba(0,0,0,0.3)'
       }}
     >
-      {/* Header row */}
+      {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{
-            width: 10, height: 10, borderRadius: '50%',
-            background: app.color,
-            boxShadow: `0 0 8px ${app.color}80`,
-          }} />
+          <div style={{ width: 10, height: 10, borderRadius: '50%', background: app.color, boxShadow: `0 0 8px ${app.color}80` }} />
           <span style={{ fontSize: 14, fontWeight: 600, color: '#e2e8f0' }}>{app.name}</span>
         </div>
         {isBest && (
           <span style={{
             fontSize: 10, fontWeight: 700, padding: '3px 9px', borderRadius: 20,
             background: 'rgba(74,222,128,0.12)', color: '#4ade80',
-            border: '1px solid rgba(74,222,128,0.25)',
-            letterSpacing: '0.5px',
+            border: '1px solid rgba(74,222,128,0.25)', letterSpacing: '0.5px',
           }}>BEST RATE</span>
         )}
         {isVotedApp && !isBest && (
           <span style={{
             fontSize: 10, fontWeight: 700, padding: '3px 9px', borderRadius: 20,
             background: 'rgba(59,130,246,0.12)', color: '#60a5fa',
-            border: '1px solid rgba(59,130,246,0.25)',
-            letterSpacing: '0.5px',
+            border: '1px solid rgba(59,130,246,0.25)', letterSpacing: '0.5px',
           }}>YOUR PICK</span>
         )}
       </div>
 
-      {/* Rate */}
-      <div style={{ marginBottom: 6 }}>
-        <span style={{ fontSize: 38, fontWeight: 800, color: '#ffffff', letterSpacing: '-1px', lineHeight: 1 }}>
-          {formatRate(app.rate, to)}
+      {/* Primary number: converted amount when input > 0, else raw rate */}
+      <div style={{ marginBottom: 4 }}>
+        <span style={{ fontSize: showConverted ? 34 : 38, fontWeight: 800, color: '#ffffff', letterSpacing: '-1px', lineHeight: 1 }}>
+          {showConverted ? formatConverted(convertedValue, to) : formatRate(app.rate, to)}
         </span>
       </div>
       <p style={{ fontSize: 12, color: '#475569', marginBottom: 14 }}>
-        {to} per 1 {from}
+        {showConverted ? `Rate: ${formatRate(app.rate, to)} ${rateLabel}` : rateLabel}
       </p>
 
       {/* Spread badge */}
       <div style={{
         display: 'inline-flex', alignItems: 'center', gap: 5,
-        background: 'rgba(255,255,255,0.04)',
-        border: '1px solid rgba(255,255,255,0.07)',
-        borderRadius: 6, padding: '5px 10px',
-        marginBottom: 18, alignSelf: 'flex-start',
+        background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)',
+        borderRadius: 6, padding: '5px 10px', marginBottom: 18, alignSelf: 'flex-start',
       }}>
         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={spreadColor(spread)} strokeWidth="2.5">
           <polyline points="18 15 12 9 6 15"/>
@@ -290,17 +569,13 @@ function RateCard({ app, corridor, midmarket, to, from, rank, totalApps, hasVote
         <div>
           <VoteBar
             label={`${appVoteCount} vote${appVoteCount !== 1 ? 's' : ''}`}
-            pct={votePct}
-            color={app.color}
-            isVoted={isVotedApp}
+            pct={votePct} color={app.color} isVoted={isVotedApp}
           />
           {isVotedApp && (
             <div style={{
               marginTop: 10, padding: '8px 12px', borderRadius: 8,
-              background: 'rgba(59,130,246,0.08)',
-              border: '1px solid rgba(59,130,246,0.2)',
-              display: 'flex', alignItems: 'center', gap: 6,
-              fontSize: 12, color: '#60a5fa',
+              background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)',
+              display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#60a5fa',
             }}>
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <polyline points="20 6 9 17 4 12"/>
@@ -315,12 +590,9 @@ function RateCard({ app, corridor, midmarket, to, from, rank, totalApps, hasVote
           disabled={voteLoading}
           style={{
             width: '100%', padding: '11px 0',
-            background: 'rgba(59,130,246,0.08)',
-            border: '1px solid rgba(59,130,246,0.25)',
-            borderRadius: 10,
-            color: '#60a5fa', fontSize: 13, fontWeight: 600,
-            cursor: voteLoading ? 'wait' : 'pointer',
-            transition: 'all 0.2s',
+            background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.25)',
+            borderRadius: 10, color: '#60a5fa', fontSize: 13, fontWeight: 600,
+            cursor: voteLoading ? 'wait' : 'pointer', transition: 'all 0.2s',
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
           }}
           onMouseEnter={e => {
@@ -345,10 +617,8 @@ function RateCard({ app, corridor, midmarket, to, from, rank, totalApps, hasVote
   )
 }
 
-function ExpectedRateSection({ corridor, communityRate, onSubmit, submitted, submitting }) {
+function ExpectedRateSection({ c, communityRate, onSubmit, submitted, submitting }) {
   const [input, setInput] = useState('')
-  const c = CORRIDORS[corridor]
-  const placeholder = c.to === 'NGN' ? 'e.g. 2150' : 'e.g. 18.50'
 
   function handleSubmit(e) {
     e.preventDefault()
@@ -358,18 +628,12 @@ function ExpectedRateSection({ corridor, communityRate, onSubmit, submitted, sub
   }
 
   return (
-    <div style={{
-      maxWidth: 900, margin: '0 auto', padding: '0 24px',
-    }}>
+    <div style={{ maxWidth: 900, margin: '0 auto', padding: '0 24px' }}>
       <div style={{
-        background: '#0d0d1a',
-        border: '1px solid rgba(255,255,255,0.07)',
-        borderRadius: 20,
-        padding: '32px',
+        background: '#0d0d1a', border: '1px solid rgba(255,255,255,0.07)',
+        borderRadius: 20, padding: '32px',
       }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 32, flexWrap: 'wrap' }}>
-
-          {/* Left: form */}
           <div style={{ flex: 1, minWidth: 240 }}>
             <p style={{ fontSize: 11, fontWeight: 700, color: '#3b82f6', letterSpacing: '1.5px', marginBottom: 8 }}>
               COMMUNITY PULSE
@@ -385,8 +649,7 @@ function ExpectedRateSection({ corridor, communityRate, onSubmit, submitted, sub
               <div style={{
                 padding: '12px 16px', borderRadius: 10,
                 background: 'rgba(74,222,128,0.08)', border: '1px solid rgba(74,222,128,0.2)',
-                display: 'flex', alignItems: 'center', gap: 8,
-                fontSize: 13, color: '#4ade80',
+                display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#4ade80',
               }}>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <polyline points="20 6 9 17 4 12"/>
@@ -399,14 +662,12 @@ function ExpectedRateSection({ corridor, communityRate, onSubmit, submitted, sub
                   <span style={{
                     position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)',
                     fontSize: 13, color: '#475569', fontWeight: 600, pointerEvents: 'none',
-                  }}>
-                    {c.to}
-                  </span>
+                  }}>{c.to}</span>
                   <input
                     type="number"
                     value={input}
                     onChange={e => setInput(e.target.value)}
-                    placeholder={placeholder}
+                    placeholder={c.ratePlaceholder}
                     style={{
                       width: '100%', padding: '12px 14px 12px 48px',
                       background: 'rgba(255,255,255,0.04)',
@@ -423,7 +684,8 @@ function ExpectedRateSection({ corridor, communityRate, onSubmit, submitted, sub
                     background: input ? '#3b82f6' : 'rgba(59,130,246,0.2)',
                     border: 'none', borderRadius: 10,
                     color: input ? '#fff' : '#475569',
-                    fontSize: 14, fontWeight: 600, cursor: input ? 'pointer' : 'not-allowed',
+                    fontSize: 14, fontWeight: 600,
+                    cursor: input ? 'pointer' : 'not-allowed',
                     transition: 'all 0.2s', whiteSpace: 'nowrap',
                   }}
                 >
@@ -433,14 +695,11 @@ function ExpectedRateSection({ corridor, communityRate, onSubmit, submitted, sub
             )}
           </div>
 
-          {/* Right: community average */}
           {communityRate.count > 0 && (
             <div style={{
               textAlign: 'center',
-              background: 'rgba(59,130,246,0.07)',
-              border: '1px solid rgba(59,130,246,0.15)',
-              borderRadius: 16, padding: '24px 32px',
-              minWidth: 180,
+              background: 'rgba(59,130,246,0.07)', border: '1px solid rgba(59,130,246,0.15)',
+              borderRadius: 16, padding: '24px 32px', minWidth: 180,
             }}>
               <p style={{ fontSize: 12, color: '#475569', marginBottom: 8, letterSpacing: '0.5px' }}>
                 COMMUNITY EXPECTS
@@ -448,9 +707,7 @@ function ExpectedRateSection({ corridor, communityRate, onSubmit, submitted, sub
               <p style={{ fontSize: 40, fontWeight: 800, color: '#60a5fa', letterSpacing: '-1.5px', lineHeight: 1 }}>
                 {formatRate(communityRate.average, c.to)}
               </p>
-              <p style={{ fontSize: 12, color: '#475569', marginTop: 8 }}>
-                {c.to} per 1 {c.from}
-              </p>
+              <p style={{ fontSize: 12, color: '#475569', marginTop: 8 }}>{c.to} per {c.unitAmount === 1 ? `1 ${c.from}` : `${c.unitAmount.toLocaleString()} ${c.from}`}</p>
               <p style={{ fontSize: 11, color: '#334155', marginTop: 10 }}>
                 Based on {communityRate.count} response{communityRate.count !== 1 ? 's' : ''}
               </p>
@@ -462,12 +719,11 @@ function ExpectedRateSection({ corridor, communityRate, onSubmit, submitted, sub
   )
 }
 
-function EmailCapture({ corridor, votedApp, expectedRate }) {
+function EmailCapture({ c, votedApp, expectedRate }) {
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [error, setError] = useState('')
-  const c = CORRIDORS[corridor]
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -478,7 +734,7 @@ function EmailCapture({ corridor, votedApp, expectedRate }) {
       const res = await fetch('/api/leads', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, corridor, voted_app: votedApp, expected_rate: expectedRate }),
+        body: JSON.stringify({ email, corridor: c.id, voted_app: votedApp, expected_rate: expectedRate }),
       })
       const data = await res.json()
       if (data.error) { setError(data.error); setLoading(false); return }
@@ -490,21 +746,16 @@ function EmailCapture({ corridor, votedApp, expectedRate }) {
   }
 
   return (
-    <div style={{
-      maxWidth: 900, margin: '0 auto', padding: '0 24px',
-    }}>
+    <div style={{ maxWidth: 900, margin: '0 auto', padding: '0 24px' }}>
       <div style={{
         background: 'linear-gradient(135deg, rgba(59,130,246,0.08) 0%, rgba(99,102,241,0.05) 100%)',
         border: '1px solid rgba(59,130,246,0.2)',
-        borderRadius: 20, padding: '40px 32px',
-        textAlign: 'center',
+        borderRadius: 20, padding: '40px 32px', textAlign: 'center',
       }}>
         <div style={{
           width: 48, height: 48, borderRadius: 12,
-          background: 'rgba(59,130,246,0.12)',
-          border: '1px solid rgba(59,130,246,0.25)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          margin: '0 auto 20px',
+          background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.25)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px',
         }}>
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2">
             <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
@@ -534,39 +785,30 @@ function EmailCapture({ corridor, votedApp, expectedRate }) {
         ) : (
           <form onSubmit={handleSubmit} style={{ display: 'flex', gap: 10, maxWidth: 460, margin: '0 auto', flexWrap: 'wrap', justifyContent: 'center' }}>
             <input
-              type="email"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              placeholder="Enter your email address"
-              required
+              type="email" value={email} onChange={e => setEmail(e.target.value)}
+              placeholder="Enter your email address" required
               style={{
                 flex: 1, minWidth: 220, padding: '13px 16px',
-                background: 'rgba(255,255,255,0.05)',
-                border: '1px solid rgba(255,255,255,0.12)',
+                background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)',
                 borderRadius: 10, color: '#fff', fontSize: 14,
               }}
             />
             <button
-              type="submit"
-              disabled={loading}
+              type="submit" disabled={loading}
               style={{
                 padding: '13px 24px',
                 background: 'linear-gradient(135deg, #3b82f6, #6366f1)',
-                border: 'none', borderRadius: 10,
-                color: '#fff', fontSize: 14, fontWeight: 600,
-                cursor: loading ? 'wait' : 'pointer',
-                transition: 'opacity 0.2s',
+                border: 'none', borderRadius: 10, color: '#fff', fontSize: 14, fontWeight: 600,
+                cursor: loading ? 'wait' : 'pointer', transition: 'opacity 0.2s',
                 opacity: loading ? 0.7 : 1,
-                display: 'flex', alignItems: 'center', gap: 7,
-                whiteSpace: 'nowrap',
+                display: 'flex', alignItems: 'center', gap: 7, whiteSpace: 'nowrap',
               }}
             >
               {loading ? 'Adding you…' : (
                 <>
                   Notify me
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <line x1="5" y1="12" x2="19" y2="12"/>
-                    <polyline points="12 5 19 12 12 19"/>
+                    <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
                   </svg>
                 </>
               )}
@@ -579,14 +821,51 @@ function EmailCapture({ corridor, votedApp, expectedRate }) {
   )
 }
 
+function FloatingToggle({ fromCurrency, toCurrency, onSwap, visible }) {
+  const fromMeta = CURRENCY_META[fromCurrency]
+  const toMeta   = CURRENCY_META[toCurrency]
+
+  return (
+    <div style={{
+      position: 'fixed', bottom: 28, right: 24, zIndex: 10,
+      transition: 'transform 0.3s cubic-bezier(0.34,1.56,0.64,1), opacity 0.25s ease',
+      transform: visible ? 'translateY(0)' : 'translateY(88px)',
+      opacity: visible ? 1 : 0,
+      pointerEvents: visible ? 'auto' : 'none',
+    }}>
+      <div style={{
+        display: 'inline-flex', alignItems: 'center', gap: 8,
+        background: 'rgba(8,8,15,0.94)', backdropFilter: 'blur(20px)',
+        border: '1px solid rgba(59,130,246,0.28)', borderRadius: 50,
+        padding: '8px 10px 8px 16px',
+        boxShadow: '0 8px 40px rgba(0,0,0,0.65), 0 0 0 1px rgba(59,130,246,0.07)',
+      }}>
+        <span style={{ fontSize: 14, fontWeight: 600, color: '#e2e8f0', display: 'flex', alignItems: 'center', gap: 5 }}>
+          <span>{fromMeta.flag}</span>
+          <span>{fromCurrency}</span>
+        </span>
+        <button
+          onClick={onSwap}
+          style={{
+            padding: '5px 11px', borderRadius: 50, border: 'none',
+            background: 'rgba(59,130,246,0.2)', color: '#60a5fa',
+            fontSize: 14, cursor: 'pointer', fontWeight: 700,
+          }}
+        >
+          ↔
+        </button>
+        <span style={{ fontSize: 14, fontWeight: 600, color: '#e2e8f0', display: 'flex', alignItems: 'center', gap: 5 }}>
+          <span>{toMeta.flag}</span>
+          <span>{toCurrency}</span>
+        </span>
+      </div>
+    </div>
+  )
+}
+
 function Footer() {
   return (
-    <footer style={{
-      borderTop: '1px solid rgba(255,255,255,0.06)',
-      padding: '32px 24px',
-      textAlign: 'center',
-      color: '#1e293b',
-    }}>
+    <footer style={{ borderTop: '1px solid rgba(255,255,255,0.06)', padding: '32px 24px', textAlign: 'center', color: '#1e293b' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 10 }}>
         <div style={{
           width: 24, height: 24, borderRadius: 6,
@@ -607,37 +886,68 @@ function Footer() {
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function Home() {
-  const [activeCorridor, setActiveCorridor] = useState('GBP-NGN')
-  const [votedApps, setVotedApps] = useState({})
-  const [votes, setVotes]   = useState({})
+  const [amount, setAmount]               = useState('100')
+  const [fromCurrency, setFromCurrency]   = useState('GBP')
+  const [toCurrency, setToCurrency]       = useState('NGN')
+  const [votedApps, setVotedApps]         = useState({})
+  const [votes, setVotes]                 = useState({})
   const [communityRates, setCommunityRates] = useState({})
-  const [rateInputs, setRateInputs] = useState({})
+  const [rateInputs, setRateInputs]       = useState({})
   const [rateSubmitted, setRateSubmitted] = useState({})
   const [rateSubmitting, setRateSubmitting] = useState(false)
-  const [voteLoading, setVoteLoading] = useState(false)
+  const [voteLoading, setVoteLoading]     = useState(false)
+  const [showFloating, setShowFloating]   = useState(false)
+  const [fastAnim, setFastAnim]           = useState(false)
+  const toggleRef                         = useRef(null)
 
-  // Load localStorage vote state on mount
+  const corridorId    = `${fromCurrency}-${toCurrency}`
+  const c             = ALL_CORRIDORS[corridorId]
+  const direction     = (fromCurrency === 'GBP' || fromCurrency === 'EUR') ? 'sending' : 'receiving'
+  const numericAmount = parseFloat(amount) || 0
+
+  function handleFromChange(newFrom) {
+    setFromCurrency(newFrom)
+    if (!VALID_DESTINATIONS[newFrom].includes(toCurrency)) {
+      setToCurrency(VALID_DESTINATIONS[newFrom][0])
+    }
+  }
+
+  function handleSwap() {
+    setFromCurrency(toCurrency)
+    setToCurrency(fromCurrency)
+  }
+
   useEffect(() => {
-    const stored = {}
-    Object.keys(CORRIDORS).forEach(c => {
-      const v = localStorage.getItem(`rp_voted_${c}`)
-      if (v) stored[c] = v
-    })
-    setVotedApps(stored)
-
-    // Also check submitted rates
-    const submittedRates = {}
-    Object.keys(CORRIDORS).forEach(c => {
-      if (localStorage.getItem(`rp_rate_${c}`)) submittedRates[c] = true
-    })
-    setRateSubmitted(submittedRates)
+    const t = setTimeout(() => setFastAnim(true), 1600)
+    return () => clearTimeout(t)
   }, [])
 
-  // Fetch data when corridor changes
   useEffect(() => {
-    fetchVotes(activeCorridor)
-    fetchRates(activeCorridor)
-  }, [activeCorridor])
+    if (!toggleRef.current) return
+    const obs = new IntersectionObserver(
+      ([entry]) => setShowFloating(!entry.isIntersecting),
+      { threshold: 0 }
+    )
+    obs.observe(toggleRef.current)
+    return () => obs.disconnect()
+  }, [])
+
+  useEffect(() => {
+    const storedVotes = {}
+    const storedRates = {}
+    ;[...Object.keys(CORRIDORS), ...Object.keys(RECEIVE_CORRIDORS)].forEach(id => {
+      const v = localStorage.getItem(`rp_voted_${id}`)
+      if (v) storedVotes[id] = v
+      if (localStorage.getItem(`rp_rate_${id}`)) storedRates[id] = true
+    })
+    setVotedApps(storedVotes)
+    setRateSubmitted(storedRates)
+  }, [])
+
+  useEffect(() => {
+    fetchVotes(corridorId)
+    fetchRates(corridorId)
+  }, [corridorId])
 
   async function fetchVotes(corridor) {
     try {
@@ -656,108 +966,126 @@ export default function Home() {
   }
 
   async function handleVote(appId) {
-    if (votedApps[activeCorridor] || voteLoading) return
+    if (votedApps[corridorId] || voteLoading) return
     setVoteLoading(true)
     try {
       const res = await fetch('/api/votes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ corridor: activeCorridor, app_id: appId }),
+        body: JSON.stringify({ corridor: corridorId, app_id: appId }),
       })
       const data = await res.json()
-      setVotes(prev => ({ ...prev, [activeCorridor]: data.votes || [] }))
-      setVotedApps(prev => ({ ...prev, [activeCorridor]: appId }))
-      localStorage.setItem(`rp_voted_${activeCorridor}`, appId)
+      setVotes(prev => ({ ...prev, [corridorId]: data.votes || [] }))
+      setVotedApps(prev => ({ ...prev, [corridorId]: appId }))
+      localStorage.setItem(`rp_voted_${corridorId}`, appId)
     } catch {}
     setVoteLoading(false)
   }
 
   async function handleRateSubmit(rate) {
-    if (rateSubmitted[activeCorridor] || rateSubmitting) return
+    if (rateSubmitted[corridorId] || rateSubmitting) return
     setRateSubmitting(true)
     try {
       const res = await fetch('/api/rates', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ corridor: activeCorridor, rate }),
+        body: JSON.stringify({ corridor: corridorId, rate }),
       })
       const data = await res.json()
-      setCommunityRates(prev => ({ ...prev, [activeCorridor]: data }))
-      setRateSubmitted(prev => ({ ...prev, [activeCorridor]: true }))
-      localStorage.setItem(`rp_rate_${activeCorridor}`, rate)
+      setCommunityRates(prev => ({ ...prev, [corridorId]: data }))
+      setRateSubmitted(prev => ({ ...prev, [corridorId]: true }))
+      localStorage.setItem(`rp_rate_${corridorId}`, rate)
     } catch {}
     setRateSubmitting(false)
   }
 
-  const c = CORRIDORS[activeCorridor]
-  const corridorVotes  = votes[activeCorridor] || []
-  const totalVotes     = corridorVotes.reduce((sum, v) => sum + (v.count || 0), 0)
-  const hasVoted       = !!votedApps[activeCorridor]
-  const communityRate  = communityRates[activeCorridor] || { average: null, count: 0 }
+  const corridorVotes = votes[corridorId] || []
+  const totalVotes    = corridorVotes.reduce((sum, v) => sum + (v.count || 0), 0)
+  const hasVoted      = !!votedApps[corridorId]
+  const communityRate = communityRates[corridorId] || { average: null, count: 0 }
+  const rankedApps    = [...c.apps].sort((a, b) => b.rate - a.rate)
 
-  // Sort apps by rate descending for rank
-  const rankedApps = [...c.apps].sort((a, b) => b.rate - a.rate)
+  const fadeIn = (delay) => ({
+    animation: 'fadeUp 0.6s ease both',
+    animationDelay: `${delay}ms`,
+  })
 
   return (
-    <div style={{ minHeight: '100vh', background: '#08080f', color: '#fff' }}>
+    <div style={{ minHeight: '100vh', background: '#08080f', color: '#fff', position: 'relative', zIndex: 2 }}>
+      <BottomGlow />
+      <FloatingToggle
+        fromCurrency={fromCurrency}
+        toCurrency={toCurrency}
+        onSwap={handleSwap}
+        visible={showFloating}
+      />
       <Navbar />
 
       {/* Hero */}
-      <div style={{ padding: '72px 24px 52px', textAlign: 'center', maxWidth: 720, margin: '0 auto' }}>
-        <div style={{
-          display: 'inline-flex', alignItems: 'center', gap: 8,
-          padding: '6px 14px', borderRadius: 50,
-          background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)',
-          marginBottom: 24, fontSize: 12, color: '#60a5fa', fontWeight: 500,
-        }}>
-          🇬🇧 🇪🇺 → 🇳🇬 🇬🇭 &nbsp;·&nbsp; Community-powered data
+      <div style={{ padding: '72px 24px 48px', textAlign: 'center', maxWidth: 760, margin: '0 auto' }}>
+
+        <div style={fadeIn(120)}>
+          <LiveCounter />
         </div>
 
         <h1 style={{
-          fontSize: 'clamp(32px, 5vw, 52px)',
-          fontWeight: 800, lineHeight: 1.1,
+          fontSize: 'clamp(32px, 5vw, 52px)', fontWeight: 800, lineHeight: 1.1,
           letterSpacing: '-1.5px', marginBottom: 18,
           background: 'linear-gradient(135deg, #f1f5f9 30%, #64748b 100%)',
           WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+          ...fadeIn(260),
         }}>
           What rate are you actually getting?
         </h1>
 
-        <p style={{ fontSize: 16, color: '#475569', lineHeight: 1.8, marginBottom: 40, maxWidth: 560, margin: '0 auto 40px' }}>
-          The community remittance rate tracker for Nigerians and Ghanaians in the UK &amp; Europe. Vote on what works, compare apps, and track community expectations.
+        <p style={{
+          fontSize: 16, color: '#475569', lineHeight: 1.8,
+          maxWidth: 560, margin: '0 auto 40px',
+          ...fadeIn(380),
+        }}>
+          The community remittance rate tracker for Nigerians and Ghanaians in the UK &amp; Europe.
+          Vote on what works, compare apps, and track community expectations.
         </p>
 
-        <CorridorTabs active={activeCorridor} onChange={setActiveCorridor} />
+        <div ref={toggleRef} style={fadeIn(500)}>
+          <CurrencyBar
+            amount={amount}
+            fromCurrency={fromCurrency}
+            toCurrency={toCurrency}
+            onAmountChange={setAmount}
+            onFromChange={handleFromChange}
+            onToChange={setToCurrency}
+            onSwap={handleSwap}
+          />
+        </div>
       </div>
 
       {/* Mid-market bar */}
-      <div style={{ marginBottom: 28 }}>
-        <MidMarketBar corridor={activeCorridor} />
+      <div style={{ marginBottom: 28, ...fadeIn(620) }}>
+        <MidMarketBar c={c} direction={direction} />
       </div>
 
       {/* Rate cards */}
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 24px 48px' }}>
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
-          gap: 16,
-        }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
           {rankedApps.map((app, rank) => (
             <RateCard
-              key={app.id}
+              key={`${corridorId}-${app.id}`}
               app={app}
-              corridor={activeCorridor}
               midmarket={c.midmarket}
               to={c.to}
               from={c.from}
+              rateLabel={c.rateLabel}
+              unitAmount={c.unitAmount}
+              inputAmount={numericAmount}
               rank={rank}
-              totalApps={c.apps.length}
               hasVoted={hasVoted}
-              votedApp={votedApps[activeCorridor]}
+              votedApp={votedApps[corridorId]}
               votes={corridorVotes}
               totalVotes={totalVotes}
               onVote={handleVote}
               voteLoading={voteLoading}
+              fastAnim={fastAnim}
             />
           ))}
         </div>
@@ -769,26 +1097,29 @@ export default function Home() {
         )}
       </div>
 
-      {/* Expected rate + Email — side by side on large screens */}
+      {/* Expected rate + Email */}
       <div style={{
         maxWidth: 1100, margin: '0 auto', padding: '0 24px 80px',
         display: 'flex', flexDirection: 'column', gap: 20,
+        ...fadeIn(820),
       }}>
         <ExpectedRateSection
-          corridor={activeCorridor}
+          c={c}
           communityRate={communityRate}
           onSubmit={handleRateSubmit}
-          submitted={!!rateSubmitted[activeCorridor]}
+          submitted={!!rateSubmitted[corridorId]}
           submitting={rateSubmitting}
         />
         <EmailCapture
-          corridor={activeCorridor}
-          votedApp={votedApps[activeCorridor]}
-          expectedRate={rateInputs[activeCorridor]}
+          c={c}
+          votedApp={votedApps[corridorId]}
+          expectedRate={rateInputs[corridorId]}
         />
       </div>
 
-      <Footer />
+      <div style={fadeIn(900)}>
+        <Footer />
+      </div>
     </div>
   )
 }
