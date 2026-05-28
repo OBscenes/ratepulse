@@ -301,7 +301,7 @@ function CurrencySelect({ value, onChange, currencies }) {
       </button>
       {open && (
         <div style={{
-          position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 200,
+          position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 1000,
           background: '#0f0f1e',
           border: '1px solid rgba(255,255,255,0.12)',
           borderRadius: 12, overflow: 'hidden', minWidth: 190,
@@ -355,7 +355,7 @@ function CurrencyBar({ amount, fromCurrency, toCurrency, onAmountChange, onFromC
         display: 'flex', alignItems: 'center', flex: 1, minWidth: 0,
         background: 'rgba(255,255,255,0.04)',
         border: '1px solid rgba(255,255,255,0.08)',
-        borderRadius: 14, overflow: 'hidden',
+        borderRadius: 14, overflow: 'visible',
       }}>
         <span style={{
           padding: '0 4px 0 16px',
