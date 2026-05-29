@@ -416,7 +416,7 @@ function CurrencyBar({ amount, fromCurrency, toCurrency, onAmountChange, onFromC
           <CurrencySelect
             value={fromCurrency}
             onChange={onFromChange}
-            currencies={Object.keys(CURRENCY_META)}
+            currencies={['GBP', 'EUR']}
           />
         </div>
       </div>
@@ -456,7 +456,7 @@ function CurrencyBar({ amount, fromCurrency, toCurrency, onAmountChange, onFromC
         <CurrencySelect
           value={toCurrency}
           onChange={onToChange}
-          currencies={Object.keys(CURRENCY_META)}
+          currencies={['NGN', 'GHS']}
         />
       </div>
     </div>
