@@ -262,23 +262,39 @@ function Navbar() {
 
 function CurrencySelect({ value, onChange, currencies }) {
   const [open, setOpen] = useState(false)
-  const ref = useRef(null)
+  const [pos, setPos]   = useState({ top: 0, left: 0 })
+  const wrapRef         = useRef(null)
+  const btnRef          = useRef(null)
+
+  function handleOpen() {
+    if (btnRef.current) {
+      const r = btnRef.current.getBoundingClientRect()
+      setPos({ top: r.bottom + 6, left: r.left })
+    }
+    setOpen(o => !o)
+  }
 
   useEffect(() => {
     if (!open) return
-    function handler(e) {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false)
+    function onPointerDown(e) {
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false)
     }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
+    function onScroll() { setOpen(false) }
+    document.addEventListener('mousedown', onPointerDown)
+    window.addEventListener('scroll', onScroll, true)
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown)
+      window.removeEventListener('scroll', onScroll, true)
+    }
   }, [open])
 
   const meta = CURRENCY_META[value]
 
   return (
-    <div ref={ref} style={{ position: 'relative' }}>
+    <div ref={wrapRef} style={{ position: 'relative' }}>
       <button
-        onClick={() => setOpen(o => !o)}
+        ref={btnRef}
+        onClick={handleOpen}
         style={{
           display: 'flex', alignItems: 'center', gap: 6,
           padding: '10px 12px',
@@ -301,11 +317,11 @@ function CurrencySelect({ value, onChange, currencies }) {
       </button>
       {open && (
         <div style={{
-          position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 1000,
+          position: 'fixed', top: pos.top, left: pos.left, zIndex: 9999,
           background: '#0f0f1e',
           border: '1px solid rgba(255,255,255,0.12)',
           borderRadius: 12, overflow: 'hidden', minWidth: 190,
-          boxShadow: '0 8px 32px rgba(0,0,0,0.7)',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.85)',
         }}>
           {currencies.map(code => {
             const m = CURRENCY_META[code]
@@ -422,7 +438,7 @@ function CurrencyBar({ amount, fromCurrency, toCurrency, onAmountChange, onFromC
         <CurrencySelect
           value={toCurrency}
           onChange={onToChange}
-          currencies={validDests}
+          currencies={Object.keys(CURRENCY_META)}
         />
       </div>
     </div>
@@ -906,9 +922,27 @@ export default function Home() {
   const numericAmount = parseFloat(amount) || 0
 
   function handleFromChange(newFrom) {
+    if (newFrom === toCurrency) {
+      setFromCurrency(newFrom)
+      setToCurrency(fromCurrency)
+      return
+    }
     setFromCurrency(newFrom)
-    if (!VALID_DESTINATIONS[newFrom].includes(toCurrency)) {
+    if (!ALL_CORRIDORS[`${newFrom}-${toCurrency}`]) {
       setToCurrency(VALID_DESTINATIONS[newFrom][0])
+    }
+  }
+
+  function handleToChange(newTo) {
+    if (newTo === fromCurrency) {
+      setToCurrency(newTo)
+      setFromCurrency(toCurrency)
+      return
+    }
+    setToCurrency(newTo)
+    if (!ALL_CORRIDORS[`${fromCurrency}-${newTo}`]) {
+      const validSources = Object.keys(VALID_DESTINATIONS).filter(k => VALID_DESTINATIONS[k].includes(newTo))
+      setFromCurrency(validSources[0])
     }
   }
 
@@ -1054,7 +1088,7 @@ export default function Home() {
             toCurrency={toCurrency}
             onAmountChange={setAmount}
             onFromChange={handleFromChange}
-            onToChange={setToCurrency}
+            onToChange={handleToChange}
             onSwap={handleSwap}
           />
         </div>
