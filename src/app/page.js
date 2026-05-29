@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 
 // ── Data ──────────────────────────────────────────────────────────────────────
 
@@ -261,37 +262,87 @@ function Navbar() {
 }
 
 function CurrencySelect({ value, onChange, currencies }) {
-  const [open, setOpen] = useState(false)
-  const [pos, setPos]   = useState({ top: 0, left: 0 })
-  const wrapRef         = useRef(null)
-  const btnRef          = useRef(null)
+  const [open, setOpen]       = useState(false)
+  const [pos, setPos]         = useState({ top: 0, left: 0 })
+  const [mounted, setMounted] = useState(false)
+  const btnRef                = useRef(null)
+  const dropdownRef           = useRef(null)
+
+  useEffect(() => { setMounted(true) }, [])
 
   function handleOpen() {
     if (btnRef.current) {
-      const r = btnRef.current.getBoundingClientRect()
-      setPos({ top: r.bottom + 6, left: r.left })
+      const r       = btnRef.current.getBoundingClientRect()
+      const minW    = 190
+      const rawLeft = r.left + window.scrollX
+      // Clamp to right edge so it doesn't overflow off screen
+      const left    = rawLeft + minW > window.innerWidth
+        ? r.right + window.scrollX - minW
+        : rawLeft
+      setPos({ top: r.bottom + window.scrollY + 6, left })
     }
     setOpen(o => !o)
   }
 
   useEffect(() => {
     if (!open) return
-    function onPointerDown(e) {
-      if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false)
+    function onDown(e) {
+      if (btnRef.current?.contains(e.target)) return
+      if (dropdownRef.current?.contains(e.target)) return
+      setOpen(false)
     }
     function onScroll() { setOpen(false) }
-    document.addEventListener('mousedown', onPointerDown)
+    document.addEventListener('mousedown', onDown)
     window.addEventListener('scroll', onScroll, true)
     return () => {
-      document.removeEventListener('mousedown', onPointerDown)
+      document.removeEventListener('mousedown', onDown)
       window.removeEventListener('scroll', onScroll, true)
     }
   }, [open])
 
   const meta = CURRENCY_META[value]
 
+  const dropdown = mounted && open ? createPortal(
+    <div
+      ref={dropdownRef}
+      style={{
+        position: 'absolute', top: pos.top, left: pos.left, zIndex: 9999,
+        background: '#0f0f1e',
+        border: '1px solid rgba(255,255,255,0.12)',
+        borderRadius: 12, overflow: 'hidden', minWidth: 190,
+        boxShadow: '0 8px 32px rgba(0,0,0,0.85)',
+      }}
+    >
+      {currencies.map(code => {
+        const m = CURRENCY_META[code]
+        const active = code === value
+        return (
+          <button
+            key={code}
+            onClick={() => { onChange(code); setOpen(false) }}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 10,
+              width: '100%', padding: '11px 14px', border: 'none',
+              background: active ? 'rgba(59,130,246,0.15)' : 'transparent',
+              color: active ? '#60a5fa' : '#e2e8f0',
+              fontSize: 14, fontWeight: active ? 600 : 400,
+              cursor: 'pointer', textAlign: 'left',
+            }}
+            onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'rgba(255,255,255,0.05)' }}
+            onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent' }}
+          >
+            <span style={{ fontSize: 18, lineHeight: 1 }}>{m.flag}</span>
+            <span style={{ fontWeight: 600, minWidth: 32 }}>{code}</span>
+            <span style={{ fontSize: 12, color: '#475569' }}>{m.name}</span>
+          </button>
+        )
+      })}
+    </div>,
+    document.body
+  ) : null
+
   return (
-    <div ref={wrapRef} style={{ position: 'relative' }}>
+    <>
       <button
         ref={btnRef}
         onClick={handleOpen}
@@ -315,41 +366,8 @@ function CurrencySelect({ value, onChange, currencies }) {
           <polyline points="6 9 12 15 18 9"/>
         </svg>
       </button>
-      {open && (
-        <div style={{
-          position: 'fixed', top: pos.top, left: pos.left, zIndex: 9999,
-          background: '#0f0f1e',
-          border: '1px solid rgba(255,255,255,0.12)',
-          borderRadius: 12, overflow: 'hidden', minWidth: 190,
-          boxShadow: '0 8px 32px rgba(0,0,0,0.85)',
-        }}>
-          {currencies.map(code => {
-            const m = CURRENCY_META[code]
-            const active = code === value
-            return (
-              <button
-                key={code}
-                onClick={() => { onChange(code); setOpen(false) }}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 10,
-                  width: '100%', padding: '11px 14px', border: 'none',
-                  background: active ? 'rgba(59,130,246,0.15)' : 'transparent',
-                  color: active ? '#60a5fa' : '#e2e8f0',
-                  fontSize: 14, fontWeight: active ? 600 : 400,
-                  cursor: 'pointer', textAlign: 'left',
-                }}
-                onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'rgba(255,255,255,0.05)' }}
-                onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent' }}
-              >
-                <span style={{ fontSize: 18, lineHeight: 1 }}>{m.flag}</span>
-                <span style={{ fontWeight: 600, minWidth: 32 }}>{code}</span>
-                <span style={{ fontSize: 12, color: '#475569' }}>{m.name}</span>
-              </button>
-            )
-          })}
-        </div>
-      )}
-    </div>
+      {dropdown}
+    </>
   )
 }
 
