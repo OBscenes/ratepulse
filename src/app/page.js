@@ -261,6 +261,38 @@ function Navbar() {
   )
 }
 
+function DirectionLabel({ direction }) {
+  const [displayed, setDisplayed] = useState(direction)
+  const [exiting, setExiting]     = useState(false)
+  const timerRef                  = useRef(null)
+
+  useEffect(() => {
+    if (direction === displayed) return
+    setExiting(true)
+    timerRef.current = setTimeout(() => {
+      setDisplayed(direction)
+      setExiting(false)
+    }, 160)
+    return () => clearTimeout(timerRef.current)
+  }, [direction])
+
+  return (
+    <div style={{ height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14, overflow: 'hidden' }}>
+      <span
+        key={displayed}
+        style={{
+          display: 'inline-block',
+          fontSize: 11, fontWeight: 700, letterSpacing: '1.5px',
+          color: '#3b82f6', textTransform: 'uppercase',
+          animation: exiting ? 'labelOut 0.16s ease forwards' : 'labelIn 0.2s ease forwards',
+        }}
+      >
+        {displayed === 'sending' ? '↑ Sending' : '↓ Receiving'}
+      </span>
+    </div>
+  )
+}
+
 function CurrencySelect({ value, onChange, currencies }) {
   const [open, setOpen]       = useState(false)
   const [pos, setPos]         = useState({ top: 0, left: 0 })
@@ -373,7 +405,9 @@ function CurrencySelect({ value, onChange, currencies }) {
 
 function CurrencyBar({ amount, fromCurrency, toCurrency, onAmountChange, onFromChange, onToChange, onSwap }) {
   const fromMeta  = CURRENCY_META[fromCurrency]
-  const validDests = VALID_DESTINATIONS[fromCurrency]
+  const isSending = fromCurrency === 'GBP' || fromCurrency === 'EUR'
+  const leftOpts  = isSending ? ['GBP', 'EUR'] : ['NGN', 'GHS']
+  const rightOpts = isSending ? ['NGN', 'GHS'] : ['GBP', 'EUR']
 
   return (
     <div style={{
@@ -416,7 +450,7 @@ function CurrencyBar({ amount, fromCurrency, toCurrency, onAmountChange, onFromC
           <CurrencySelect
             value={fromCurrency}
             onChange={onFromChange}
-            currencies={['GBP', 'EUR']}
+            currencies={leftOpts}
           />
         </div>
       </div>
@@ -456,7 +490,7 @@ function CurrencyBar({ amount, fromCurrency, toCurrency, onAmountChange, onFromC
         <CurrencySelect
           value={toCurrency}
           onChange={onToChange}
-          currencies={['NGN', 'GHS']}
+          currencies={rightOpts}
         />
       </div>
     </div>
@@ -1100,6 +1134,7 @@ export default function Home() {
         </p>
 
         <div ref={toggleRef} style={fadeIn(500)}>
+          <DirectionLabel direction={direction} />
           <CurrencyBar
             amount={amount}
             fromCurrency={fromCurrency}
