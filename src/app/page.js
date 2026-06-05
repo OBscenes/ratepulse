@@ -66,14 +66,15 @@ const RECEIVE_CORRIDORS = {
   'NGN-GBP': {
     id: 'NGN-GBP', label: 'NGN → GBP',
     from: 'NGN', fromFlag: '🇳🇬', to: 'GBP', toFlag: '🇬🇧',
-    midmarket: 54.40, unitAmount: 100000,
-    rateLabel: 'GBP per 100,000 NGN', ratePlaceholder: 'e.g. 53.00',
+    midmarket: 1838.18, unitAmount: 1,
+    invertedRate: true,
+    rateLabel: 'NGN per 1 GBP', ratePlaceholder: 'e.g. 1880',
     apps: [
-      { id: 'sendapp',    name: 'SendApp',    rate: 53.25, color: '#4ade80' },
-      { id: 'africhange', name: 'Africhange', rate: 53.01, color: '#34d399' },
-      { id: 'raenest',    name: 'Raenest',    rate: 52.66, color: '#60a5fa' },
-      { id: 'pesa',       name: 'Pesa',       rate: 50.47, color: '#a78bfa' },
-      { id: 'lemfi',      name: 'LemFi',      rate: 50.12, color: '#f59e0b' },
+      { id: 'sendapp',    name: 'SendApp',    rate: 1877, color: '#4ade80' },
+      { id: 'africhange', name: 'Africhange', rate: 1885, color: '#34d399' },
+      { id: 'raenest',    name: 'Raenest',    rate: 1897, color: '#60a5fa' },
+      { id: 'pesa',       name: 'Pesa',       rate: 1971, color: '#a78bfa' },
+      { id: 'lemfi',      name: 'LemFi',      rate: 1983, color: '#f59e0b' },
     ],
   },
   'GHS-GBP': {
@@ -496,13 +497,14 @@ function CurrencyBar({ amount, fromCurrency, toCurrency, onAmountChange, onFromC
 }
 
 function MidMarketBar({ c, direction }) {
-  const fromLabel = c.unitAmount === 1
-    ? `1 ${c.from}`
-    : `${c.unitAmount.toLocaleString()} ${c.from}`
-  const formatted = formatRate(c.midmarket, c.to)
+  const rateDisplay = c.invertedRate
+    ? `1 ${c.to} = ${formatRate(c.midmarket, c.from)} ${c.from}`
+    : c.unitAmount === 1
+      ? `1 ${c.from} = ${formatRate(c.midmarket, c.to)} ${c.to}`
+      : `${c.unitAmount.toLocaleString()} ${c.from} = ${formatRate(c.midmarket, c.to)} ${c.to}`
   const blurb = direction === 'sending'
     ? 'Every app below charges a spread on this. The gap is their fee.'
-    : 'Apps take a cut — the more GBP/EUR you receive per unit sent, the better the deal.'
+    : 'Apps take a cut — the fewer NGN you pay per GBP, the better the deal.'
 
   return (
     <div style={{ maxWidth: 900, margin: '0 auto', padding: '0 24px' }}>
@@ -518,7 +520,7 @@ function MidMarketBar({ c, direction }) {
           <span>Mid-market rate</span>
         </div>
         <span style={{ fontSize: 15, fontWeight: 700, color: '#ffffff' }}>
-          {fromLabel} = {formatted} {c.to}
+          {rateDisplay}
         </span>
         <span style={{ fontSize: 12, color: '#475569', marginLeft: 'auto' }}>
           {blurb}
@@ -548,14 +550,14 @@ function VoteBar({ label, pct, color, isVoted }) {
   )
 }
 
-function RateCard({ app, midmarket, to, from, rateLabel, unitAmount, inputAmount, rank, hasVoted, votedApp, votes, totalVotes, onVote, voteLoading, fastAnim }) {
+function RateCard({ app, midmarket, to, from, invertedRate, rateLabel, unitAmount, inputAmount, rank, hasVoted, votedApp, votes, totalVotes, onVote, voteLoading, fastAnim }) {
   const spread = ((app.rate - midmarket) / midmarket) * 100
   const isBest = rank === 0
   const isVotedApp = votedApp === app.id
   const appVoteCount = votes.find(v => v.app_id === app.id)?.count || 0
   const votePct = totalVotes > 0 ? Math.round((appVoteCount / totalVotes) * 100) : 0
   const showConverted = inputAmount > 0
-  const convertedValue = (inputAmount / unitAmount) * app.rate
+  const convertedValue = invertedRate ? inputAmount / app.rate : (inputAmount / unitAmount) * app.rate
 
   return (
     <div
@@ -609,11 +611,11 @@ function RateCard({ app, midmarket, to, from, rateLabel, unitAmount, inputAmount
       {/* Primary number: converted amount when input > 0, else raw rate */}
       <div style={{ marginBottom: 4 }}>
         <span style={{ fontSize: showConverted ? 34 : 38, fontWeight: 800, color: '#ffffff', letterSpacing: '-1px', lineHeight: 1 }}>
-          {showConverted ? formatConverted(convertedValue, to) : formatRate(app.rate, to)}
+          {showConverted ? formatConverted(convertedValue, to) : formatRate(app.rate, invertedRate ? from : to)}
         </span>
       </div>
       <p style={{ fontSize: 12, color: '#475569', marginBottom: 14 }}>
-        {showConverted ? `Rate: ${formatRate(app.rate, to)} ${rateLabel}` : rateLabel}
+        {showConverted ? `Rate: ${formatRate(app.rate, invertedRate ? from : to)} ${rateLabel}` : rateLabel}
       </p>
 
       {/* Spread badge */}
@@ -626,7 +628,7 @@ function RateCard({ app, midmarket, to, from, rateLabel, unitAmount, inputAmount
           <polyline points="18 15 12 9 6 15"/>
         </svg>
         <span style={{ fontSize: 12, color: spreadColor(spread), fontWeight: 500 }}>
-          {Math.abs(spread).toFixed(1)}% below mid-market
+          {Math.abs(spread).toFixed(1)}% {invertedRate ? 'above' : 'below'} mid-market
         </span>
       </div>
 
@@ -728,7 +730,7 @@ function ExpectedRateSection({ c, communityRate, onSubmit, submitted, submitting
                   <span style={{
                     position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)',
                     fontSize: 13, color: '#475569', fontWeight: 600, pointerEvents: 'none',
-                  }}>{c.to}</span>
+                  }}>{c.invertedRate ? c.from : c.to}</span>
                   <input
                     type="number"
                     value={input}
@@ -771,9 +773,13 @@ function ExpectedRateSection({ c, communityRate, onSubmit, submitted, submitting
                 COMMUNITY EXPECTS
               </p>
               <p style={{ fontSize: 40, fontWeight: 800, color: '#60a5fa', letterSpacing: '-1.5px', lineHeight: 1 }}>
-                {formatRate(communityRate.average, c.to)}
+                {formatRate(communityRate.average, c.invertedRate ? c.from : c.to)}
               </p>
-              <p style={{ fontSize: 12, color: '#475569', marginTop: 8 }}>{c.to} per {c.unitAmount === 1 ? `1 ${c.from}` : `${c.unitAmount.toLocaleString()} ${c.from}`}</p>
+              <p style={{ fontSize: 12, color: '#475569', marginTop: 8 }}>
+                {c.invertedRate
+                  ? `${c.from} per 1 ${c.to}`
+                  : `${c.to} per ${c.unitAmount === 1 ? `1 ${c.from}` : `${c.unitAmount.toLocaleString()} ${c.from}`}`}
+              </p>
               <p style={{ fontSize: 11, color: '#334155', marginTop: 10 }}>
                 Based on {communityRate.count} response{communityRate.count !== 1 ? 's' : ''}
               </p>
@@ -1087,7 +1093,7 @@ export default function Home() {
   const totalVotes    = corridorVotes.reduce((sum, v) => sum + (v.count || 0), 0)
   const hasVoted      = !!votedApps[corridorId]
   const communityRate = communityRates[corridorId] || { average: null, count: 0 }
-  const rankedApps    = [...c.apps].sort((a, b) => b.rate - a.rate)
+  const rankedApps    = [...c.apps].sort((a, b) => c.invertedRate ? a.rate - b.rate : b.rate - a.rate)
 
   const fadeIn = (delay) => ({
     animation: 'fadeUp 0.6s ease both',
@@ -1160,6 +1166,7 @@ export default function Home() {
               midmarket={c.midmarket}
               to={c.to}
               from={c.from}
+              invertedRate={!!c.invertedRate}
               rateLabel={c.rateLabel}
               unitAmount={c.unitAmount}
               inputAmount={numericAmount}
