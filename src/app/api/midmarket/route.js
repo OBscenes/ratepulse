@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server'
+import supabase from '@/lib/supabase'
+import { DEFAULT_PLATFORMS } from '@/lib/corridor-defaults'
 
 const ALLRATES_BASE = 'https://allratestoday.com/api/v1/rates'
 
@@ -15,16 +17,17 @@ function buildRates(gbpNgn, gbpGhs, eurNgn, eurGhs) {
     'GBP-GHS': gbpGhs,
     'EUR-NGN': eurNgn,
     'EUR-GHS': eurGhs,
-    'NGN-GBP': gbpNgn,             // invertedRate corridor shares GBP-NGN base
-    'GHS-GBP': 1000   / gbpGhs,   // GBP per 1,000 GHS
-    'NGN-EUR': 100000 / eurNgn,   // EUR per 100,000 NGN
-    'GHS-EUR': 1000   / eurGhs,   // EUR per 1,000 GHS
+    'NGN-GBP': gbpNgn,
+    'GHS-GBP': 1000   / gbpGhs,
+    'NGN-EUR': 100000 / eurNgn,
+    'GHS-EUR': 1000   / eurGhs,
   }
 }
 
 let cache     = null
 let cacheTime = 0
-const TTL     = 60_000  // 60 s
+export let lastUpdated = null   // exported so /api/admin/stats can read it
+const TTL = 60_000
 
 async function fetchLiveRates() {
   const key = process.env.ALLRATES_API_KEY
@@ -36,8 +39,8 @@ async function fetchLiveRates() {
     fetch(`${ALLRATES_BASE}?source=EUR&target=NGN,GHS`, { headers, cache: 'no-store' }),
   ])
 
-  if (!gbpRes.ok) throw new Error(`AllRatesToday GBP request failed: ${gbpRes.status}`)
-  if (!eurRes.ok) throw new Error(`AllRatesToday EUR request failed: ${eurRes.status}`)
+  if (!gbpRes.ok) throw new Error(`AllRatesToday GBP: ${gbpRes.status}`)
+  if (!eurRes.ok) throw new Error(`AllRatesToday EUR: ${eurRes.status}`)
 
   const [gbpData, eurData] = await Promise.all([gbpRes.json(), eurRes.json()])
 
@@ -54,22 +57,60 @@ async function fetchLiveRates() {
   )
 }
 
-export async function GET() {
-  const now = Date.now()
+async function logRatesToHistory(rates) {
+  try {
+    // Prefer DB platforms for margins; fall back to hardcoded defaults
+    const { data: dbPlatforms } = await supabase
+      .from('platforms')
+      .select('corridor, platform_id, name, margin, active')
 
-  if (cache && now - cacheTime < TTL) {
-    return NextResponse.json(cache, {
-      headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=30' },
-    })
+    const platforms = (dbPlatforms && dbPlatforms.length > 0)
+      ? dbPlatforms
+      : DEFAULT_PLATFORMS
+
+    const records = platforms
+      .filter(p => p.active && rates[p.corridor] != null)
+      .map(p => ({
+        platform:  p.platform_id,
+        corridor:  p.corridor,
+        rate:      rates[p.corridor] * (1 + p.margin / 100),
+        baseline:  rates[p.corridor],
+        recorded_at: new Date().toISOString(),
+      }))
+
+    if (records.length > 0) {
+      await supabase.from('rate_history').insert(records)
+    }
+  } catch (err) {
+    console.error('[midmarket] rate_history log failed:', err.message)
+  }
+}
+
+export async function GET(request) {
+  const { searchParams } = new URL(request.url)
+  const force = searchParams.get('force') === '1'
+  const now   = Date.now()
+
+  if (!force && cache && now - cacheTime < TTL) {
+    return NextResponse.json(
+      { ...cache, updatedAt: lastUpdated },
+      { headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=30' } },
+    )
   }
 
   try {
-    const rates = await fetchLiveRates()
-    cache     = rates
-    cacheTime = now
-    return NextResponse.json(rates, {
-      headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=30' },
-    })
+    const rates    = await fetchLiveRates()
+    cache          = rates
+    cacheTime      = now
+    lastUpdated    = new Date().toISOString()
+
+    // Fire-and-forget — don't block the response
+    logRatesToHistory(rates)
+
+    return NextResponse.json(
+      { ...rates, updatedAt: lastUpdated },
+      { headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=30' } },
+    )
   } catch (err) {
     console.error('[midmarket] fetch failed:', err.message)
 
@@ -79,8 +120,9 @@ export async function GET() {
       STATIC_FALLBACKS['EUR-NGN'],
       STATIC_FALLBACKS['EUR-GHS'],
     )
-    return NextResponse.json(fallback, {
-      headers: { 'Cache-Control': 'no-store' },
-    })
+    return NextResponse.json(
+      { ...fallback, updatedAt: lastUpdated },
+      { headers: { 'Cache-Control': 'no-store' } },
+    )
   }
 }

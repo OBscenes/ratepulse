@@ -1019,7 +1019,7 @@ export default function Home() {
     function fetchMidmarkets() {
       fetch('/api/midmarket')
         .then(r => r.json())
-        .then(data => setLiveMidmarkets(data))
+        .then(({ updatedAt: _discard, ...rates }) => setLiveMidmarkets(rates))
         .catch(() => {})
     }
     fetchMidmarkets()
