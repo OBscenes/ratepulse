@@ -70,105 +70,126 @@ function AdminNav({ activeTab, onTabChange }) {
 
 // ── Platform Manager ──────────────────────────────────────────────────────────
 
-function PlatformRow({ row, onSave }) {
+function corridorLabel(id) {
+  return id.replace('-', ' → ')
+}
+
+function PlatformCard({ row, onSave }) {
   const [margin, setMargin] = useState(String(row.margin))
   const [active, setActive] = useState(row.active)
   const [type,   setType]   = useState(row.type)
   const [saving, setSaving] = useState(false)
   const [saved,  setSaved]  = useState(false)
+  const [err,    setErr]    = useState('')
 
-  const dirty = Number(margin) !== row.margin || active !== row.active || type !== row.type
+  const dirty = Number(margin) !== Number(row.margin) || active !== row.active || type !== row.type
 
   async function save() {
     setSaving(true)
-    const res = await fetch('/api/platforms', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: row.id, margin: Number(margin), active, type }),
-    })
-    setSaving(false)
-    if (res.ok) {
-      const updated = await res.json()
-      onSave(updated)
+    setErr('')
+    try {
+      const res = await fetch('/api/platforms', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: row.id, margin: Number(margin), active, type }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Save failed')
+      onSave(data)
       setSaved(true)
-      setTimeout(() => setSaved(false), 2000)
+      setTimeout(() => setSaved(false), 2500)
+    } catch (e) {
+      setErr(e.message)
     }
+    setSaving(false)
   }
 
   return (
-    <tr>
-      <td style={S.td}>
-        <span style={{
-          display: 'inline-block', padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 600,
-          background: 'rgba(59,130,246,0.12)', color: '#60a5fa',
-        }}>{row.corridor}</span>
-      </td>
-      <td style={{ ...S.td, display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span style={{ width: 10, height: 10, borderRadius: '50%', background: row.color, flexShrink: 0, display: 'inline-block' }} />
-        {row.name}
-      </td>
-      <td style={S.td}>
+    <div style={{
+      background: '#0a0a17',
+      border: `1px solid ${active ? 'rgba(255,255,255,0.08)' : 'rgba(248,113,113,0.15)'}`,
+      borderRadius: 12, padding: '18px 18px 14px',
+      display: 'flex', flexDirection: 'column', gap: 0,
+    }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+        <span style={{ width: 11, height: 11, borderRadius: '50%', background: row.color, flexShrink: 0, boxShadow: `0 0 6px ${row.color}80` }} />
+        <span style={{ fontWeight: 600, color: '#f1f5f9', fontSize: 14, flex: 1 }}>{row.name}</span>
+        <button
+          onClick={() => setActive(a => !a)}
+          style={{
+            ...S.btn, padding: '3px 10px', fontSize: 10, fontWeight: 700, letterSpacing: '0.5px',
+            background: active ? 'rgba(74,222,128,0.12)' : 'rgba(248,113,113,0.12)',
+            color: active ? '#4ade80' : '#f87171',
+            border: `1px solid ${active ? 'rgba(74,222,128,0.3)' : 'rgba(248,113,113,0.3)'}`,
+          }}
+        >
+          {active ? 'ON' : 'OFF'}
+        </button>
+      </div>
+
+      {/* Margin */}
+      <label style={{ fontSize: 11, color: '#475569', marginBottom: 5 }}>Margin %</label>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
         <input
           type="number"
           step="0.0001"
           value={margin}
           onChange={e => setMargin(e.target.value)}
-          style={{ ...S.input, width: 100, textAlign: 'right' }}
+          style={{ ...S.input, flex: 1, textAlign: 'right', fontSize: 15, fontWeight: 600,
+            color: Number(margin) >= 0 ? '#4ade80' : '#f87171' }}
         />
-        <span style={{ color: '#475569', fontSize: 12, marginLeft: 4 }}>%</span>
-      </td>
-      <td style={S.td}>
-        <button
-          onClick={() => setActive(a => !a)}
-          style={{
-            ...S.btn,
-            padding: '4px 12px', fontSize: 11,
-            background: active ? 'rgba(74,222,128,0.12)' : 'rgba(248,113,113,0.12)',
-            color: active ? '#4ade80' : '#f87171',
-            border: `1px solid ${active ? 'rgba(74,222,128,0.25)' : 'rgba(248,113,113,0.25)'}`,
-          }}
-        >
-          {active ? 'ON' : 'OFF'}
-        </button>
-      </td>
-      <td style={S.td}>
-        <select
-          value={type}
-          onChange={e => setType(e.target.value)}
-          style={{ ...S.input, cursor: 'pointer' }}
-        >
-          <option value="sending">Sending</option>
-          <option value="receiving">Receiving</option>
-          <option value="both">Both</option>
-        </select>
-      </td>
-      <td style={S.td}>
-        <button
-          onClick={save}
-          disabled={!dirty || saving}
-          style={{
-            ...S.btn,
-            background: saved ? 'rgba(74,222,128,0.15)' : dirty ? '#3b82f6' : 'rgba(255,255,255,0.05)',
-            color: saved ? '#4ade80' : dirty ? '#fff' : '#334155',
-            opacity: saving ? 0.6 : 1,
-          }}
-        >
-          {saving ? '…' : saved ? '✓ Saved' : 'Save'}
-        </button>
-      </td>
-    </tr>
+        <span style={{ color: '#475569', fontSize: 13 }}>%</span>
+      </div>
+
+      {/* Type */}
+      <label style={{ fontSize: 11, color: '#475569', marginBottom: 5 }}>Direction</label>
+      <select
+        value={type}
+        onChange={e => setType(e.target.value)}
+        style={{ ...S.input, cursor: 'pointer', marginBottom: 14, width: '100%' }}
+      >
+        <option value="sending">Sending</option>
+        <option value="receiving">Receiving</option>
+        <option value="both">Both</option>
+      </select>
+
+      {/* Save */}
+      <button
+        onClick={save}
+        disabled={!dirty || saving}
+        style={{
+          ...S.btn, width: '100%', textAlign: 'center',
+          background: saved
+            ? 'rgba(74,222,128,0.15)'
+            : dirty ? 'rgba(59,130,246,0.18)' : 'rgba(255,255,255,0.04)',
+          color: saved ? '#4ade80' : dirty ? '#93c5fd' : '#334155',
+          border: `1px solid ${saved ? 'rgba(74,222,128,0.3)' : dirty ? 'rgba(59,130,246,0.35)' : 'rgba(255,255,255,0.06)'}`,
+          opacity: saving ? 0.6 : 1,
+        }}
+      >
+        {saving ? 'Saving…' : saved ? '✓ Saved' : 'Save changes'}
+      </button>
+      {err && <p style={{ fontSize: 11, color: '#f87171', marginTop: 6, textAlign: 'center' }}>{err}</p>}
+    </div>
   )
 }
 
 function PlatformManager() {
-  const [platforms, setPlatforms] = useState([])
-  const [loading,   setLoading]   = useState(true)
-  const [filter,    setFilter]    = useState('')
+  const [platforms,  setPlatforms]  = useState([])
+  const [loading,    setLoading]    = useState(true)
+  const [corridor,   setCorridor]   = useState('')
 
   useEffect(() => {
     fetch('/api/platforms')
       .then(r => r.json())
-      .then(data => { setPlatforms(data); setLoading(false) })
+      .then(data => {
+        setPlatforms(data)
+        setLoading(false)
+        // Default to first corridor in the list
+        const first = data[0]?.corridor
+        if (first) setCorridor(first)
+      })
       .catch(() => setLoading(false))
   }, [])
 
@@ -176,41 +197,50 @@ function PlatformManager() {
     setPlatforms(prev => prev.map(p => p.id === updated.id ? updated : p))
   }
 
-  const visible = platforms.filter(p =>
-    !filter || p.corridor.includes(filter.toUpperCase()) || p.name.toLowerCase().includes(filter.toLowerCase())
-  )
+  // Preserve insertion order, deduplicate
+  const corridors = [...new Map(platforms.map(p => [p.corridor, p.corridor])).keys()]
+  const cards     = platforms.filter(p => p.corridor === corridor)
 
   return (
     <div style={S.card}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-        <h2 style={{ fontSize: 16, fontWeight: 700, color: '#f1f5f9' }}>Platform Manager</h2>
-        <input
-          placeholder="Filter by corridor or name…"
-          value={filter}
-          onChange={e => setFilter(e.target.value)}
-          style={{ ...S.input, width: 220 }}
-        />
+      {/* Header row */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20, flexWrap: 'wrap' }}>
+        <h2 style={{ fontSize: 16, fontWeight: 700, color: '#f1f5f9', marginRight: 'auto' }}>Platform Manager</h2>
+        {!loading && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 12, color: '#475569' }}>Corridor</span>
+            <select
+              value={corridor}
+              onChange={e => setCorridor(e.target.value)}
+              style={{ ...S.input, cursor: 'pointer', fontWeight: 600, minWidth: 160 }}
+            >
+              {corridors.map(c => (
+                <option key={c} value={c}>{corridorLabel(c)}</option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
       {loading ? (
         <p style={{ color: '#475569', fontSize: 13 }}>Loading platforms…</p>
+      ) : cards.length === 0 ? (
+        <p style={{ color: '#334155', fontSize: 13 }}>No platforms for this corridor.</p>
       ) : (
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr>
-                {['Corridor', 'Platform', 'Margin', 'Active', 'Type', ''].map(h => (
-                  <th key={h} style={S.th}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {visible.map(row => (
-                <PlatformRow key={row.id ?? `${row.corridor}-${row.platform_id}`} row={row} onSave={handleSave} />
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <>
+          <p style={{ fontSize: 12, color: '#334155', marginBottom: 16 }}>
+            {cards.length} platform{cards.length !== 1 ? 's' : ''} — {corridorLabel(corridor)}
+          </p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12 }}>
+            {cards.map(row => (
+              <PlatformCard
+                key={row.id ?? `${row.corridor}-${row.platform_id}`}
+                row={row}
+                onSave={handleSave}
+              />
+            ))}
+          </div>
+        </>
       )}
     </div>
   )
