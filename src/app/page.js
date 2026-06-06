@@ -11,11 +11,11 @@ const CORRIDORS = {
     midmarket: 1838.18, unitAmount: 1,
     rateLabel: 'NGN per 1 GBP', ratePlaceholder: 'e.g. 1840',
     apps: [
-      { id: 'lemfi',      name: 'LemFi',      rate: 1846.27, color: '#f59e0b' },
-      { id: 'sendapp',    name: 'SendApp',    rate: 1826.78, color: '#4ade80' },
-      { id: 'africhange', name: 'Africhange', rate: 1826.42, color: '#34d399' },
-      { id: 'pesa',       name: 'Pesa',       rate: 1825.31, color: '#a78bfa' },
-      { id: 'raenest',    name: 'Raenest',    rate: 1824.39, color: '#60a5fa' },
+      { id: 'lemfi',      name: 'LemFi',      margin:  0.4401, color: '#f59e0b' },
+      { id: 'sendapp',    name: 'SendApp',    margin: -0.6202, color: '#4ade80' },
+      { id: 'africhange', name: 'Africhange', margin: -0.6398, color: '#34d399' },
+      { id: 'pesa',       name: 'Pesa',       margin: -0.6999, color: '#a78bfa' },
+      { id: 'raenest',    name: 'Raenest',    margin: -0.7503, color: '#60a5fa' },
     ],
   },
   'GBP-GHS': {
@@ -24,12 +24,12 @@ const CORRIDORS = {
     midmarket: 18.20, unitAmount: 1,
     rateLabel: 'GHS per 1 GBP', ratePlaceholder: 'e.g. 18.50',
     apps: [
-      { id: 'wise',         name: 'Wise',          rate: 17.85, color: '#4ade80' },
-      { id: 'lemfi',        name: 'LemFi',         rate: 17.92, color: '#f59e0b' },
-      { id: 'remitly',      name: 'Remitly',       rate: 17.78, color: '#f87171' },
-      { id: 'worldremit',   name: 'WorldRemit',    rate: 17.65, color: '#a78bfa' },
-      { id: 'sendwave',     name: 'Sendwave',      rate: 17.88, color: '#34d399' },
-      { id: 'westernunion', name: 'Western Union', rate: 17.50, color: '#fbbf24' },
+      { id: 'wise',         name: 'Wise',          margin: -1.9231, color: '#4ade80' },
+      { id: 'lemfi',        name: 'LemFi',         margin: -1.5385, color: '#f59e0b' },
+      { id: 'remitly',      name: 'Remitly',       margin: -2.3077, color: '#f87171' },
+      { id: 'worldremit',   name: 'WorldRemit',    margin: -3.0220, color: '#a78bfa' },
+      { id: 'sendwave',     name: 'Sendwave',      margin: -1.7582, color: '#34d399' },
+      { id: 'westernunion', name: 'Western Union', margin: -3.8462, color: '#fbbf24' },
     ],
   },
   'EUR-NGN': {
@@ -38,12 +38,12 @@ const CORRIDORS = {
     midmarket: 1820, unitAmount: 1,
     rateLabel: 'NGN per 1 EUR', ratePlaceholder: 'e.g. 1850',
     apps: [
-      { id: 'wise',         name: 'Wise',          rate: 1785, color: '#4ade80' },
-      { id: 'lemfi',        name: 'LemFi',         rate: 1792, color: '#f59e0b' },
-      { id: 'remitly',      name: 'Remitly',       rate: 1778, color: '#f87171' },
-      { id: 'worldremit',   name: 'WorldRemit',    rate: 1765, color: '#a78bfa' },
-      { id: 'sendwave',     name: 'Sendwave',      rate: 1788, color: '#34d399' },
-      { id: 'westernunion', name: 'Western Union', rate: 1750, color: '#fbbf24' },
+      { id: 'wise',         name: 'Wise',          margin: -1.9231, color: '#4ade80' },
+      { id: 'lemfi',        name: 'LemFi',         margin: -1.5385, color: '#f59e0b' },
+      { id: 'remitly',      name: 'Remitly',       margin: -2.3077, color: '#f87171' },
+      { id: 'worldremit',   name: 'WorldRemit',    margin: -3.0220, color: '#a78bfa' },
+      { id: 'sendwave',     name: 'Sendwave',      margin: -1.7582, color: '#34d399' },
+      { id: 'westernunion', name: 'Western Union', margin: -3.8462, color: '#fbbf24' },
     ],
   },
   'EUR-GHS': {
@@ -52,12 +52,12 @@ const CORRIDORS = {
     midmarket: 15.60, unitAmount: 1,
     rateLabel: 'GHS per 1 EUR', ratePlaceholder: 'e.g. 15.80',
     apps: [
-      { id: 'wise',         name: 'Wise',          rate: 15.25, color: '#4ade80' },
-      { id: 'lemfi',        name: 'LemFi',         rate: 15.32, color: '#f59e0b' },
-      { id: 'remitly',      name: 'Remitly',       rate: 15.18, color: '#f87171' },
-      { id: 'worldremit',   name: 'WorldRemit',    rate: 15.05, color: '#a78bfa' },
-      { id: 'sendwave',     name: 'Sendwave',      rate: 15.28, color: '#34d399' },
-      { id: 'westernunion', name: 'Western Union', rate: 14.90, color: '#fbbf24' },
+      { id: 'wise',         name: 'Wise',          margin: -2.2436, color: '#4ade80' },
+      { id: 'lemfi',        name: 'LemFi',         margin: -1.7949, color: '#f59e0b' },
+      { id: 'remitly',      name: 'Remitly',       margin: -2.6923, color: '#f87171' },
+      { id: 'worldremit',   name: 'WorldRemit',    margin: -3.5256, color: '#a78bfa' },
+      { id: 'sendwave',     name: 'Sendwave',      margin: -2.0513, color: '#34d399' },
+      { id: 'westernunion', name: 'Western Union', margin: -4.4872, color: '#fbbf24' },
     ],
   },
 }
@@ -70,11 +70,11 @@ const RECEIVE_CORRIDORS = {
     invertedRate: true,
     rateLabel: 'NGN per 1 GBP', ratePlaceholder: 'e.g. 1880',
     apps: [
-      { id: 'sendapp',    name: 'SendApp',    rate: 1877, color: '#4ade80' },
-      { id: 'africhange', name: 'Africhange', rate: 1885, color: '#34d399' },
-      { id: 'raenest',    name: 'Raenest',    rate: 1897, color: '#60a5fa' },
-      { id: 'pesa',       name: 'Pesa',       rate: 1971, color: '#a78bfa' },
-      { id: 'lemfi',      name: 'LemFi',      rate: 1983, color: '#f59e0b' },
+      { id: 'sendapp',    name: 'SendApp',    margin: 2.1119, color: '#4ade80' },
+      { id: 'africhange', name: 'Africhange', margin: 2.5471, color: '#34d399' },
+      { id: 'raenest',    name: 'Raenest',    margin: 3.2001, color: '#60a5fa' },
+      { id: 'pesa',       name: 'Pesa',       margin: 7.2256, color: '#a78bfa' },
+      { id: 'lemfi',      name: 'LemFi',      margin: 7.8782, color: '#f59e0b' },
     ],
   },
   'GHS-GBP': {
@@ -83,12 +83,12 @@ const RECEIVE_CORRIDORS = {
     midmarket: 54.95, unitAmount: 1000,
     rateLabel: 'GBP per 1,000 GHS', ratePlaceholder: 'e.g. 54.50',
     apps: [
-      { id: 'lemfi',        name: 'LemFi',         rate: 54.20, color: '#f59e0b' },
-      { id: 'sendwave',     name: 'Sendwave',      rate: 54.00, color: '#34d399' },
-      { id: 'wise',         name: 'Wise',          rate: 53.75, color: '#4ade80' },
-      { id: 'remitly',      name: 'Remitly',       rate: 53.45, color: '#f87171' },
-      { id: 'worldremit',   name: 'WorldRemit',    rate: 52.85, color: '#a78bfa' },
-      { id: 'westernunion', name: 'Western Union', rate: 52.15, color: '#fbbf24' },
+      { id: 'lemfi',        name: 'LemFi',         margin: -1.3648, color: '#f59e0b' },
+      { id: 'sendwave',     name: 'Sendwave',      margin: -1.7289, color: '#34d399' },
+      { id: 'wise',         name: 'Wise',          margin: -2.1838, color: '#4ade80' },
+      { id: 'remitly',      name: 'Remitly',       margin: -2.7298, color: '#f87171' },
+      { id: 'worldremit',   name: 'WorldRemit',    margin: -3.8217, color: '#a78bfa' },
+      { id: 'westernunion', name: 'Western Union', margin: -5.0955, color: '#fbbf24' },
     ],
   },
   'NGN-EUR': {
@@ -97,12 +97,12 @@ const RECEIVE_CORRIDORS = {
     midmarket: 54.95, unitAmount: 100000,
     rateLabel: 'EUR per 100,000 NGN', ratePlaceholder: 'e.g. 54.00',
     apps: [
-      { id: 'lemfi',        name: 'LemFi',         rate: 54.10, color: '#f59e0b' },
-      { id: 'sendwave',     name: 'Sendwave',      rate: 53.85, color: '#34d399' },
-      { id: 'wise',         name: 'Wise',          rate: 53.50, color: '#4ade80' },
-      { id: 'remitly',      name: 'Remitly',       rate: 53.15, color: '#f87171' },
-      { id: 'worldremit',   name: 'WorldRemit',    rate: 52.55, color: '#a78bfa' },
-      { id: 'westernunion', name: 'Western Union', rate: 51.80, color: '#fbbf24' },
+      { id: 'lemfi',        name: 'LemFi',         margin: -1.5469, color: '#f59e0b' },
+      { id: 'sendwave',     name: 'Sendwave',      margin: -2.0018, color: '#34d399' },
+      { id: 'wise',         name: 'Wise',          margin: -2.6388, color: '#4ade80' },
+      { id: 'remitly',      name: 'Remitly',       margin: -3.2757, color: '#f87171' },
+      { id: 'worldremit',   name: 'WorldRemit',    margin: -4.3676, color: '#a78bfa' },
+      { id: 'westernunion', name: 'Western Union', margin: -5.7325, color: '#fbbf24' },
     ],
   },
   'GHS-EUR': {
@@ -111,12 +111,12 @@ const RECEIVE_CORRIDORS = {
     midmarket: 64.10, unitAmount: 1000,
     rateLabel: 'EUR per 1,000 GHS', ratePlaceholder: 'e.g. 63.50',
     apps: [
-      { id: 'lemfi',        name: 'LemFi',         rate: 63.20, color: '#f59e0b' },
-      { id: 'sendwave',     name: 'Sendwave',      rate: 63.00, color: '#34d399' },
-      { id: 'wise',         name: 'Wise',          rate: 62.65, color: '#4ade80' },
-      { id: 'remitly',      name: 'Remitly',       rate: 62.25, color: '#f87171' },
-      { id: 'worldremit',   name: 'WorldRemit',    rate: 61.55, color: '#a78bfa' },
-      { id: 'westernunion', name: 'Western Union', rate: 60.75, color: '#fbbf24' },
+      { id: 'lemfi',        name: 'LemFi',         margin: -1.4040, color: '#f59e0b' },
+      { id: 'sendwave',     name: 'Sendwave',      margin: -1.7160, color: '#34d399' },
+      { id: 'wise',         name: 'Wise',          margin: -2.2622, color: '#4ade80' },
+      { id: 'remitly',      name: 'Remitly',       margin: -2.8862, color: '#f87171' },
+      { id: 'worldremit',   name: 'WorldRemit',    margin: -3.9782, color: '#a78bfa' },
+      { id: 'westernunion', name: 'Western Union', margin: -5.2262, color: '#fbbf24' },
     ],
   },
 }
@@ -504,7 +504,9 @@ function MidMarketBar({ c, direction }) {
       : `${c.unitAmount.toLocaleString()} ${c.from} = ${formatRate(c.midmarket, c.to)} ${c.to}`
   const blurb = direction === 'sending'
     ? 'Every app below charges a spread on this. The gap is their fee.'
-    : 'Apps take a cut — the fewer NGN you pay per GBP, the better the deal.'
+    : c.invertedRate
+      ? `Apps charge a spread — the less ${c.from} you pay per ${c.to}, the better.`
+      : `Apps take a cut — the more ${c.to} you receive per unit sent, the better.`
 
   return (
     <div style={{ maxWidth: 900, margin: '0 auto', padding: '0 24px' }}>
@@ -970,6 +972,7 @@ export default function Home() {
   const [voteLoading, setVoteLoading]     = useState(false)
   const [showFloating, setShowFloating]   = useState(false)
   const [fastAnim, setFastAnim]           = useState(false)
+  const [liveMidmarkets, setLiveMidmarkets] = useState({})
   const toggleRef                         = useRef(null)
 
   const corridorId    = `${fromCurrency}-${toCurrency}`
@@ -1010,6 +1013,18 @@ export default function Home() {
   useEffect(() => {
     const t = setTimeout(() => setFastAnim(true), 1600)
     return () => clearTimeout(t)
+  }, [])
+
+  useEffect(() => {
+    function fetchMidmarkets() {
+      fetch('/api/midmarket')
+        .then(r => r.json())
+        .then(data => setLiveMidmarkets(data))
+        .catch(() => {})
+    }
+    fetchMidmarkets()
+    const timer = setInterval(fetchMidmarkets, 60_000)
+    return () => clearInterval(timer)
   }, [])
 
   useEffect(() => {
@@ -1093,7 +1108,15 @@ export default function Home() {
   const totalVotes    = corridorVotes.reduce((sum, v) => sum + (v.count || 0), 0)
   const hasVoted      = !!votedApps[corridorId]
   const communityRate = communityRates[corridorId] || { average: null, count: 0 }
-  const rankedApps    = [...c.apps].sort((a, b) => c.invertedRate ? a.rate - b.rate : b.rate - a.rate)
+
+  const effectiveMidmarket = liveMidmarkets[corridorId] ?? c.midmarket
+  const effectiveApps = c.apps.map(app => ({
+    ...app,
+    rate: effectiveMidmarket * (1 + app.margin / 100),
+  }))
+  const effectiveC = { ...c, midmarket: effectiveMidmarket, apps: effectiveApps }
+
+  const rankedApps = [...effectiveApps].sort((a, b) => c.invertedRate ? a.rate - b.rate : b.rate - a.rate)
 
   const fadeIn = (delay) => ({
     animation: 'fadeUp 0.6s ease both',
@@ -1153,7 +1176,7 @@ export default function Home() {
 
       {/* Mid-market bar */}
       <div style={{ marginBottom: 28, ...fadeIn(620) }}>
-        <MidMarketBar c={c} direction={direction} />
+        <MidMarketBar c={effectiveC} direction={direction} />
       </div>
 
       {/* Rate cards */}
@@ -1163,7 +1186,7 @@ export default function Home() {
             <RateCard
               key={`${corridorId}-${app.id}`}
               app={app}
-              midmarket={c.midmarket}
+              midmarket={effectiveC.midmarket}
               to={c.to}
               from={c.from}
               invertedRate={!!c.invertedRate}
