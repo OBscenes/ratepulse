@@ -5,6 +5,23 @@ import {
   Tooltip, Legend, ResponsiveContainer,
 } from 'recharts'
 
+// ── Constants ─────────────────────────────────────────────────────────────────
+
+const CURRENCIES = ['GBP', 'EUR', 'CAD', 'NGN', 'GHS']
+const CURRENCY_SYMBOL = { GBP: '£', EUR: '€', CAD: 'CA$', NGN: '₦', GHS: 'GH₵' }
+const WESTERN = new Set(['GBP', 'EUR', 'CAD'])
+const LOCAL   = new Set(['NGN', 'GHS'])
+
+function formatRateDisplay(corridor, rate) {
+  const [from, to] = corridor.split('-')
+  const isInverted = LOCAL.has(from) && WESTERN.has(to)
+  const formatted  = rate.toLocaleString('en-GB', { maximumFractionDigits: 2, minimumFractionDigits: 2 })
+  if (isInverted) {
+    return `${formatted} ${from} per ${CURRENCY_SYMBOL[to] || to}1`
+  }
+  return `${formatted} ${to} per ${CURRENCY_SYMBOL[from] || from}1`
+}
+
 // ── Shared styles ─────────────────────────────────────────────────────────────
 
 const S = {
@@ -74,7 +91,7 @@ function corridorLabel(id) {
   return id.replace('-', ' → ')
 }
 
-function PlatformCard({ row, onSave }) {
+function PlatformCard({ row, midmarket, onSave }) {
   const [margin, setMargin] = useState(String(row.margin))
   const [active, setActive] = useState(row.active)
   const [type,   setType]   = useState(row.type)
@@ -83,6 +100,10 @@ function PlatformCard({ row, onSave }) {
   const [err,    setErr]    = useState('')
 
   const dirty = Number(margin) !== Number(row.margin) || active !== row.active || type !== row.type
+
+  const effectiveRate = midmarket != null ? midmarket * (1 + Number(margin) / 100) : null
+  const canSend    = type === 'sending'   || type === 'both'
+  const canReceive = type === 'receiving' || type === 'both'
 
   async function save() {
     setSaving(true)
@@ -171,71 +192,103 @@ function PlatformCard({ row, onSave }) {
         {saving ? 'Saving…' : saved ? '✓ Saved' : 'Save changes'}
       </button>
       {err && <p style={{ fontSize: 11, color: '#f87171', marginTop: 6, textAlign: 'center' }}>{err}</p>}
+
+      {/* Computed rates */}
+      {effectiveRate != null && (
+        <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', marginTop: 12, paddingTop: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+            <span style={{ fontSize: 10, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.6px' }}>Sending</span>
+            <span style={{ fontSize: 12, color: canSend ? '#94a3b8' : '#334155', fontVariantNumeric: 'tabular-nums' }}>
+              {canSend ? formatRateDisplay(row.corridor, effectiveRate) : 'N/A'}
+            </span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+            <span style={{ fontSize: 10, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.6px' }}>Receiving</span>
+            <span style={{ fontSize: 12, color: canReceive ? '#94a3b8' : '#334155', fontVariantNumeric: 'tabular-nums' }}>
+              {canReceive ? formatRateDisplay(row.corridor, effectiveRate) : 'N/A'}
+            </span>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
 
 function PlatformManager() {
-  const [platforms,  setPlatforms]  = useState([])
-  const [loading,    setLoading]    = useState(true)
-  const [corridor,   setCorridor]   = useState('')
+  const [platforms,    setPlatforms]    = useState([])
+  const [loading,      setLoading]      = useState(true)
+  const [fromCurrency, setFromCurrency] = useState('GBP')
+  const [toCurrency,   setToCurrency]   = useState('NGN')
+  const [midmarkets,   setMidmarkets]   = useState({})
 
   useEffect(() => {
     fetch('/api/platforms')
       .then(r => r.json())
-      .then(data => {
-        setPlatforms(data)
-        setLoading(false)
-        // Default to first corridor in the list
-        const first = data[0]?.corridor
-        if (first) setCorridor(first)
-      })
+      .then(data => { setPlatforms(Array.isArray(data) ? data : []); setLoading(false) })
       .catch(() => setLoading(false))
+
+    fetch('/api/midmarket')
+      .then(r => r.json())
+      .then(data => {
+        const { updatedAt: _, ...rates } = data
+        setMidmarkets(rates)
+      })
+      .catch(() => {})
   }, [])
 
   function handleSave(updated) {
     setPlatforms(prev => prev.map(p => p.id === updated.id ? updated : p))
   }
 
-  // Preserve insertion order, deduplicate
-  const corridors = [...new Map(platforms.map(p => [p.corridor, p.corridor])).keys()]
-  const cards     = platforms.filter(p => p.corridor === corridor)
+  const corridor = fromCurrency && toCurrency ? `${fromCurrency}-${toCurrency}` : ''
+  const cards     = corridor ? platforms.filter(p => p.corridor === corridor) : []
+  const midmarket = midmarkets[corridor] ?? null
+
+  const selectStyle = { ...S.input, cursor: 'pointer', fontWeight: 600, width: 96 }
 
   return (
     <div style={S.card}>
-      {/* Header row */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20, flexWrap: 'wrap' }}>
-        <h2 style={{ fontSize: 16, fontWeight: 700, color: '#f1f5f9', marginRight: 'auto' }}>Platform Manager</h2>
-        {!loading && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: 12, color: '#475569' }}>Corridor</span>
-            <select
-              value={corridor}
-              onChange={e => setCorridor(e.target.value)}
-              style={{ ...S.input, cursor: 'pointer', fontWeight: 600, minWidth: 160 }}
-            >
-              {corridors.map(c => (
-                <option key={c} value={c}>{corridorLabel(c)}</option>
-              ))}
-            </select>
-          </div>
+      <h2 style={{ fontSize: 16, fontWeight: 700, color: '#f1f5f9', marginBottom: 20 }}>Platform Manager</h2>
+
+      {/* Dual currency selectors */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
+        <select value={fromCurrency} onChange={e => setFromCurrency(e.target.value)} style={selectStyle}>
+          {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
+
+        <span style={{ color: '#3b82f6', fontSize: 16, fontWeight: 700, userSelect: 'none' }}>→</span>
+
+        <select value={toCurrency} onChange={e => setToCurrency(e.target.value)} style={selectStyle}>
+          {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
+
+        {midmarket != null && corridor && fromCurrency !== toCurrency && (
+          <span style={{ fontSize: 11, color: '#475569', marginLeft: 6 }}>
+            mid-market: {formatRateDisplay(corridor, midmarket)}
+          </span>
         )}
       </div>
 
-      {loading ? (
+      {fromCurrency === toCurrency ? (
+        <p style={{ color: '#334155', fontSize: 13 }}>Select two different currencies.</p>
+      ) : loading ? (
         <p style={{ color: '#475569', fontSize: 13 }}>Loading platforms…</p>
       ) : cards.length === 0 ? (
-        <p style={{ color: '#334155', fontSize: 13 }}>No platforms for this corridor.</p>
+        <p style={{ color: '#334155', fontSize: 13 }}>No platforms configured for {corridor}.</p>
       ) : (
         <>
           <p style={{ fontSize: 12, color: '#334155', marginBottom: 16 }}>
-            {cards.length} platform{cards.length !== 1 ? 's' : ''} — {corridorLabel(corridor)}
+            {cards.length} platform{cards.length !== 1 ? 's' : ''} · {corridor}
+            {midmarket != null && (
+              <span style={{ color: '#475569' }}> · baseline {formatRateDisplay(corridor, midmarket)}</span>
+            )}
           </p>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12 }}>
             {cards.map(row => (
               <PlatformCard
                 key={row.id ?? `${row.corridor}-${row.platform_id}`}
                 row={row}
+                midmarket={midmarket}
                 onSave={handleSave}
               />
             ))}
