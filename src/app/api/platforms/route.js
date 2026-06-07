@@ -7,7 +7,7 @@ async function getOrSeedPlatforms() {
     .from('platforms')
     .select('*')
     .order('corridor')
-    .order('margin', { ascending: false })
+    .order('name')
 
   if (error) throw error
 
@@ -24,7 +24,7 @@ async function getOrSeedPlatforms() {
     .from('platforms')
     .select('*')
     .order('corridor')
-    .order('margin', { ascending: false })
+    .order('name')
 
   return seeded || DEFAULT_PLATFORMS
 }
@@ -41,14 +41,13 @@ export async function GET() {
 
 export async function PATCH(request) {
   try {
-    const { id, margin, active, type } = await request.json()
+    const { id, sending_rate, receiving_rate, active } = await request.json()
     if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
 
-    const updates = {}
-    if (margin !== undefined) updates.margin = Number(margin)
-    if (active !== undefined) updates.active = Boolean(active)
-    if (type   !== undefined) updates.type   = type
-    updates.updated_at = new Date().toISOString()
+    const updates = { updated_at: new Date().toISOString() }
+    if (active        !== undefined) updates.active        = Boolean(active)
+    if (sending_rate  !== undefined) updates.sending_rate  = sending_rate  === null ? null : Number(sending_rate)
+    if (receiving_rate !== undefined) updates.receiving_rate = receiving_rate === null ? null : Number(receiving_rate)
 
     const { data, error } = await supabase
       .from('platforms')

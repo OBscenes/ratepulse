@@ -8,19 +8,24 @@ import {
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const CURRENCIES = ['GBP', 'EUR', 'CAD', 'NGN', 'GHS']
-const CURRENCY_SYMBOL = { GBP: '£', EUR: '€', CAD: 'CA$', NGN: '₦', GHS: 'GH₵' }
-const WESTERN = new Set(['GBP', 'EUR', 'CAD'])
-const LOCAL   = new Set(['NGN', 'GHS'])
+const CURRENCIES     = ['GBP', 'EUR', 'CAD', 'USD', 'NGN', 'GHS']
+const CURRENCY_FLAGS = { GBP: '🇬🇧', EUR: '🇪🇺', CAD: '🇨🇦', USD: '🇺🇸', NGN: '🇳🇬', GHS: '🇬🇭' }
 
-function formatRateDisplay(corridor, rate) {
-  const [from, to] = corridor.split('-')
-  const isInverted = LOCAL.has(from) && WESTERN.has(to)
-  const formatted  = rate.toLocaleString('en-GB', { maximumFractionDigits: 2, minimumFractionDigits: 2 })
-  if (isInverted) {
-    return `${formatted} ${from} per ${CURRENCY_SYMBOL[to] || to}1`
-  }
-  return `${formatted} ${to} per ${CURRENCY_SYMBOL[from] || from}1`
+function corridorLabel(c) {
+  const [from, to] = c.split('-')
+  return `${CURRENCY_FLAGS[from] ?? ''}${from} → ${CURRENCY_FLAGS[to] ?? ''}${to}`
+}
+
+function timeAgo(isoString) {
+  if (!isoString) return null
+  const secs = Math.floor((Date.now() - new Date(isoString).getTime()) / 1000)
+  if (secs < 60) return 'just now'
+  const mins = Math.floor(secs / 60)
+  if (mins < 60) return `${mins} minute${mins !== 1 ? 's' : ''} ago`
+  const hours = Math.floor(mins / 60)
+  if (hours < 24) return `${hours} hour${hours !== 1 ? 's' : ''} ago`
+  const days = Math.floor(hours / 24)
+  return `${days} day${days !== 1 ? 's' : ''} ago`
 }
 
 // ── Shared styles ─────────────────────────────────────────────────────────────
@@ -88,23 +93,22 @@ function AdminNav({ activeTab, onTabChange }) {
 
 // ── Platform Manager ──────────────────────────────────────────────────────────
 
-function corridorLabel(id) {
-  return id.replace('-', ' → ')
-}
+function PlatformCard({ row, onSave }) {
+  const [sendingRate,   setSendingRate]   = useState(row.sending_rate   != null ? String(row.sending_rate)   : '')
+  const [receivingRate, setReceivingRate] = useState(row.receiving_rate != null ? String(row.receiving_rate) : '')
+  const [active,    setActive]    = useState(row.active)
+  const [saving,    setSaving]    = useState(false)
+  const [saved,     setSaved]     = useState(false)
+  const [err,       setErr]       = useState('')
+  const [updatedAt, setUpdatedAt] = useState(row.updated_at ?? null)
 
-function PlatformCard({ row, midmarket, onSave }) {
-  const [margin, setMargin] = useState(String(row.margin))
-  const [active, setActive] = useState(row.active)
-  const [type,   setType]   = useState(row.type)
-  const [saving, setSaving] = useState(false)
-  const [saved,  setSaved]  = useState(false)
-  const [err,    setErr]    = useState('')
+  const parsedSending   = sendingRate   === '' ? null : (isNaN(Number(sendingRate))   ? null : Number(sendingRate))
+  const parsedReceiving = receivingRate === '' ? null : (isNaN(Number(receivingRate)) ? null : Number(receivingRate))
 
-  const dirty = Number(margin) !== Number(row.margin) || active !== row.active || type !== row.type
-
-  const effectiveRate = midmarket != null ? midmarket * (1 + Number(margin) / 100) : null
-  const canSend    = type === 'sending'   || type === 'both'
-  const canReceive = type === 'receiving' || type === 'both'
+  const dirty =
+    parsedSending   !== (row.sending_rate   ?? null) ||
+    parsedReceiving !== (row.receiving_rate ?? null) ||
+    active !== row.active
 
   async function save() {
     setSaving(true)
@@ -113,12 +117,18 @@ function PlatformCard({ row, midmarket, onSave }) {
       const res = await fetch('/api/platforms', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: row.id, margin: Number(margin), active, type }),
+        body: JSON.stringify({
+          id:            row.id,
+          sending_rate:  parsedSending,
+          receiving_rate: parsedReceiving,
+          active,
+        }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Save failed')
       onSave(data)
       setSaved(true)
+      setUpdatedAt(data.updated_at)
       setTimeout(() => setSaved(false), 2500)
     } catch (e) {
       setErr(e.message)
@@ -126,16 +136,33 @@ function PlatformCard({ row, midmarket, onSave }) {
     setSaving(false)
   }
 
+  const rateInputStyle = {
+    width: '100%', boxSizing: 'border-box',
+    background: 'rgba(255,255,255,0.06)',
+    border: '1.5px solid rgba(255,255,255,0.14)',
+    borderRadius: 8, color: '#f1f5f9',
+    fontSize: 22, fontWeight: 600,
+    padding: '10px 14px', outline: 'none',
+    fontVariantNumeric: 'tabular-nums',
+    letterSpacing: '-0.3px',
+  }
+
+  const fieldLabelStyle = {
+    display: 'block', marginBottom: 5,
+    fontSize: 10, fontWeight: 700, letterSpacing: '0.8px',
+    color: '#475569', textTransform: 'uppercase',
+  }
+
   return (
     <div style={{
       background: '#0a0a17',
       border: `1px solid ${active ? 'rgba(255,255,255,0.08)' : 'rgba(248,113,113,0.15)'}`,
-      borderRadius: 12, padding: '18px 18px 14px',
+      borderRadius: 12, padding: '16px 16px 12px',
       display: 'flex', flexDirection: 'column', gap: 0,
     }}>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-        <span style={{ width: 11, height: 11, borderRadius: '50%', background: row.color, flexShrink: 0, boxShadow: `0 0 6px ${row.color}80` }} />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+        <span style={{ width: 10, height: 10, borderRadius: '50%', background: row.color, flexShrink: 0, boxShadow: `0 0 6px ${row.color}80` }} />
         <span style={{ fontWeight: 600, color: '#f1f5f9', fontSize: 14, flex: 1 }}>{row.name}</span>
         <button
           onClick={() => setActive(a => !a)}
@@ -150,67 +177,54 @@ function PlatformCard({ row, midmarket, onSave }) {
         </button>
       </div>
 
-      {/* Margin */}
-      <label style={{ fontSize: 11, color: '#475569', marginBottom: 5 }}>Margin %</label>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
-        <input
-          type="number"
-          step="0.0001"
-          value={margin}
-          onChange={e => setMargin(e.target.value)}
-          style={{ ...S.input, flex: 1, textAlign: 'right', fontSize: 15, fontWeight: 600,
-            color: Number(margin) >= 0 ? '#4ade80' : '#f87171' }}
-        />
-        <span style={{ color: '#475569', fontSize: 13 }}>%</span>
-      </div>
+      {/* Sending Rate */}
+      <label style={fieldLabelStyle}>Sending Rate</label>
+      <input
+        type="number"
+        step="any"
+        min="0"
+        value={sendingRate}
+        onChange={e => setSendingRate(e.target.value)}
+        placeholder="—"
+        aria-label={`${row.name} sending rate`}
+        style={{ ...rateInputStyle, marginBottom: 12 }}
+      />
 
-      {/* Type */}
-      <label style={{ fontSize: 11, color: '#475569', marginBottom: 5 }}>Direction</label>
-      <select
-        value={type}
-        onChange={e => setType(e.target.value)}
-        style={{ ...S.input, cursor: 'pointer', marginBottom: 14, width: '100%' }}
-      >
-        <option value="sending">Sending</option>
-        <option value="receiving">Receiving</option>
-        <option value="both">Both</option>
-      </select>
+      {/* Receiving Rate */}
+      <label style={fieldLabelStyle}>Receiving Rate</label>
+      <input
+        type="number"
+        step="any"
+        min="0"
+        value={receivingRate}
+        onChange={e => setReceivingRate(e.target.value)}
+        placeholder="—"
+        aria-label={`${row.name} receiving rate`}
+        style={{ ...rateInputStyle, marginBottom: 14 }}
+      />
 
       {/* Save */}
       <button
         onClick={save}
         disabled={!dirty || saving}
         style={{
-          ...S.btn, width: '100%', textAlign: 'center',
+          ...S.btn, width: '100%', textAlign: 'center', fontSize: 14, padding: '9px 14px',
           background: saved
             ? 'rgba(74,222,128,0.15)'
-            : dirty ? 'rgba(59,130,246,0.18)' : 'rgba(255,255,255,0.04)',
+            : dirty ? 'rgba(59,130,246,0.22)' : 'rgba(255,255,255,0.04)',
           color: saved ? '#4ade80' : dirty ? '#93c5fd' : '#334155',
-          border: `1px solid ${saved ? 'rgba(74,222,128,0.3)' : dirty ? 'rgba(59,130,246,0.35)' : 'rgba(255,255,255,0.06)'}`,
-          opacity: saving ? 0.6 : 1,
+          border: `1px solid ${saved ? 'rgba(74,222,128,0.3)' : dirty ? 'rgba(59,130,246,0.4)' : 'rgba(255,255,255,0.06)'}`,
+          opacity: saving ? 0.7 : 1,
         }}
       >
-        {saving ? 'Saving…' : saved ? '✓ Saved' : 'Save changes'}
+        {saving ? 'Saving…' : saved ? '✓ Saved' : 'Save'}
       </button>
+
       {err && <p style={{ fontSize: 11, color: '#f87171', marginTop: 6, textAlign: 'center' }}>{err}</p>}
 
-      {/* Computed rates */}
-      {effectiveRate != null && (
-        <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', marginTop: 12, paddingTop: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-            <span style={{ fontSize: 10, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.6px' }}>Sending</span>
-            <span style={{ fontSize: 12, color: canSend ? '#94a3b8' : '#334155', fontVariantNumeric: 'tabular-nums' }}>
-              {canSend ? formatRateDisplay(row.corridor, effectiveRate) : 'N/A'}
-            </span>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-            <span style={{ fontSize: 10, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.6px' }}>Receiving</span>
-            <span style={{ fontSize: 12, color: canReceive ? '#94a3b8' : '#334155', fontVariantNumeric: 'tabular-nums' }}>
-              {canReceive ? formatRateDisplay(row.corridor, effectiveRate) : 'N/A'}
-            </span>
-          </div>
-        </div>
-      )}
+      <p style={{ fontSize: 10, color: '#334155', marginTop: 8, textAlign: 'center' }}>
+        {updatedAt ? `Last updated ${timeAgo(updatedAt)}` : 'Never updated'}
+      </p>
     </div>
   )
 }
@@ -220,21 +234,12 @@ function PlatformManager() {
   const [loading,      setLoading]      = useState(true)
   const [fromCurrency, setFromCurrency] = useState('GBP')
   const [toCurrency,   setToCurrency]   = useState('NGN')
-  const [midmarkets,   setMidmarkets]   = useState({})
 
   useEffect(() => {
     fetch('/api/platforms')
       .then(r => r.json())
       .then(data => { setPlatforms(Array.isArray(data) ? data : []); setLoading(false) })
       .catch(() => setLoading(false))
-
-    fetch('/api/midmarket')
-      .then(r => r.json())
-      .then(data => {
-        const { updatedAt: _, ...rates } = data
-        setMidmarkets(rates)
-      })
-      .catch(() => {})
   }, [])
 
   function handleSave(updated) {
@@ -242,10 +247,10 @@ function PlatformManager() {
   }
 
   const corridor = fromCurrency && toCurrency ? `${fromCurrency}-${toCurrency}` : ''
-  const cards     = corridor ? platforms.filter(p => p.corridor === corridor) : []
-  const midmarket = midmarkets[corridor] ?? null
+  const cards    = corridor ? platforms.filter(p => p.corridor === corridor) : []
 
-  const selectStyle = { ...S.input, cursor: 'pointer', fontWeight: 600, width: 96 }
+  const flagLabel  = c => `${CURRENCY_FLAGS[c] ?? ''} ${c}`
+  const selectStyle = { ...S.input, cursor: 'pointer', fontWeight: 600, fontSize: 14, width: 110 }
 
   return (
     <div style={S.card}>
@@ -254,20 +259,14 @@ function PlatformManager() {
       {/* Dual currency selectors */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
         <select value={fromCurrency} onChange={e => setFromCurrency(e.target.value)} style={selectStyle}>
-          {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
+          {CURRENCIES.map(c => <option key={c} value={c}>{flagLabel(c)}</option>)}
         </select>
 
         <span style={{ color: '#3b82f6', fontSize: 16, fontWeight: 700, userSelect: 'none' }}>→</span>
 
         <select value={toCurrency} onChange={e => setToCurrency(e.target.value)} style={selectStyle}>
-          {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
+          {CURRENCIES.map(c => <option key={c} value={c}>{flagLabel(c)}</option>)}
         </select>
-
-        {midmarket != null && corridor && fromCurrency !== toCurrency && (
-          <span style={{ fontSize: 11, color: '#475569', marginLeft: 6 }}>
-            mid-market: {formatRateDisplay(corridor, midmarket)}
-          </span>
-        )}
       </div>
 
       {fromCurrency === toCurrency ? (
@@ -275,21 +274,17 @@ function PlatformManager() {
       ) : loading ? (
         <p style={{ color: '#475569', fontSize: 13 }}>Loading platforms…</p>
       ) : cards.length === 0 ? (
-        <p style={{ color: '#334155', fontSize: 13 }}>No platforms configured for {corridor}.</p>
+        <p style={{ color: '#334155', fontSize: 13 }}>No platforms configured for {corridorLabel(corridor)}.</p>
       ) : (
         <>
           <p style={{ fontSize: 12, color: '#334155', marginBottom: 16 }}>
-            {cards.length} platform{cards.length !== 1 ? 's' : ''} · {corridor}
-            {midmarket != null && (
-              <span style={{ color: '#475569' }}> · baseline {formatRateDisplay(corridor, midmarket)}</span>
-            )}
+            {cards.length} platform{cards.length !== 1 ? 's' : ''} · {corridorLabel(corridor)}
           </p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 12 }}>
             {cards.map(row => (
               <PlatformCard
                 key={row.id ?? `${row.corridor}-${row.platform_id}`}
                 row={row}
-                midmarket={midmarket}
                 onSave={handleSave}
               />
             ))}
@@ -305,6 +300,7 @@ function PlatformManager() {
 const CORRIDOR_OPTIONS = [
   'GBP-NGN','GBP-GHS','EUR-NGN','EUR-GHS',
   'NGN-GBP','GHS-GBP','NGN-EUR','GHS-EUR',
+  'USD-NGN','USD-GHS','NGN-USD','GHS-USD',
 ]
 
 function RateHistoryChart() {
@@ -348,7 +344,7 @@ function RateHistoryChart() {
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
         <h2 style={{ fontSize: 16, fontWeight: 700, color: '#f1f5f9', marginRight: 'auto' }}>Rate History</h2>
         <select value={corridor} onChange={e => setCorridor(e.target.value)} style={{ ...S.input, cursor: 'pointer' }}>
-          {CORRIDOR_OPTIONS.map(c => <option key={c} value={c}>{c}</option>)}
+          {CORRIDOR_OPTIONS.map(c => <option key={c} value={c}>{corridorLabel(c)}</option>)}
         </select>
         <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} style={S.input} />
         <span style={{ color: '#475569' }}>→</span>
