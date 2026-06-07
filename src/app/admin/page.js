@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, Legend, ResponsiveContainer,
@@ -671,6 +672,12 @@ function Sidebar() {
 
 export default function AdminPage() {
   const [activeTab, setActiveTab] = useState('platforms')
+  const router = useRouter()
+
+  async function handleLogout() {
+    await fetch('/api/admin/auth', { method: 'DELETE' })
+    router.push('/admin/login')
+  }
 
   return (
     <div style={{ minHeight: '100vh', background: '#08080f', color: '#fff', fontFamily: 'inherit' }}>
@@ -692,7 +699,20 @@ export default function AdminPage() {
           <span style={{ fontWeight: 700, fontSize: 15 }}>RatePulse</span>
           <span style={{ fontSize: 12, color: '#334155', padding: '2px 8px', background: 'rgba(255,255,255,0.05)', borderRadius: 6 }}>Admin</span>
         </div>
-        <a href="/" style={{ fontSize: 12, color: '#475569', textDecoration: 'none' }}>← Back to site</a>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <a href="/" style={{ fontSize: 12, color: '#475569', textDecoration: 'none' }}>← Back to site</a>
+          <button
+            onClick={handleLogout}
+            style={{
+              padding: '5px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600,
+              cursor: 'pointer', border: '1px solid rgba(248,113,113,0.3)',
+              background: 'rgba(248,113,113,0.08)', color: '#f87171',
+              transition: 'opacity 0.15s',
+            }}
+          >
+            Logout
+          </button>
+        </div>
       </div>
 
       {/* Body */}
