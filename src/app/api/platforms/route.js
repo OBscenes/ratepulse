@@ -52,10 +52,28 @@ export async function PATCH(request) {
     if (sending_rate   !== undefined) updates.sending_rate   = sending_rate   === null ? null : Number(sending_rate)
     if (receiving_rate !== undefined) updates.receiving_rate = receiving_rate === null ? null : Number(receiving_rate)
 
-    let q = supabase.from('platforms').update(updates)
-    q = id ? q.eq('id', id) : q.eq('corridor', corridor).eq('platform_id', platform_id)
+    // Resolve the target row's UUID so the UPDATE always targets exactly one row.
+    // Using .limit(1) on the SELECT means duplicate rows won't blow up here.
+    let rowId = id
+    if (!rowId) {
+      const { data: found, error: findErr } = await supabase
+        .from('platforms')
+        .select('id')
+        .eq('corridor', corridor)
+        .eq('platform_id', platform_id)
+        .limit(1)
 
-    const { data, error } = await q.select().single()
+      if (findErr) return NextResponse.json({ error: findErr.message }, { status: 500 })
+      if (!found || found.length === 0) return NextResponse.json({ error: 'Platform not found' }, { status: 404 })
+      rowId = found[0].id
+    }
+
+    const { data, error } = await supabase
+      .from('platforms')
+      .update(updates)
+      .eq('id', rowId)
+      .select()
+      .single()
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json(data)
