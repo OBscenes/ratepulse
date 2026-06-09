@@ -158,6 +158,18 @@ function formatConverted(value, currency) {
   return symbol + value.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
+function timeAgo(isoString) {
+  if (!isoString) return null
+  const secs = Math.floor((Date.now() - new Date(isoString).getTime()) / 1000)
+  if (secs < 60) return 'just now'
+  const mins = Math.floor(secs / 60)
+  if (mins < 60) return `${mins} minute${mins !== 1 ? 's' : ''} ago`
+  const hours = Math.floor(mins / 60)
+  if (hours < 24) return `${hours} hour${hours !== 1 ? 's' : ''} ago`
+  const days = Math.floor(hours / 24)
+  return `${days} day${days !== 1 ? 's' : ''} ago`
+}
+
 // ── Sub-components ────────────────────────────────────────────────────────────
 
 function BottomGlow() {
@@ -553,13 +565,16 @@ function VoteBar({ label, pct, color, isVoted }) {
 }
 
 function RateCard({ app, midmarket, to, from, invertedRate, rateLabel, unitAmount, inputAmount, rank, hasVoted, votedApp, votes, totalVotes, onVote, voteLoading, fastAnim }) {
-  const spread = ((app.rate - midmarket) / midmarket) * 100
-  const isBest = rank === 0
+  const hasRate = app.rate !== null && app.rate !== undefined
+  const spread = hasRate ? ((app.rate - midmarket) / midmarket) * 100 : null
+  const isBest = rank === 0 && hasRate
   const isVotedApp = votedApp === app.id
   const appVoteCount = votes.find(v => v.app_id === app.id)?.count || 0
   const votePct = totalVotes > 0 ? Math.round((appVoteCount / totalVotes) * 100) : 0
-  const showConverted = inputAmount > 0
-  const convertedValue = invertedRate ? inputAmount / app.rate : (inputAmount / unitAmount) * app.rate
+  const showConverted = inputAmount > 0 && hasRate
+  const convertedValue = hasRate
+    ? (invertedRate ? inputAmount / app.rate : (inputAmount / unitAmount) * app.rate)
+    : null
 
   return (
     <div
@@ -612,27 +627,43 @@ function RateCard({ app, midmarket, to, from, invertedRate, rateLabel, unitAmoun
 
       {/* Primary number: converted amount when input > 0, else raw rate */}
       <div style={{ marginBottom: 4 }}>
-        <span style={{ fontSize: showConverted ? 34 : 38, fontWeight: 800, color: '#ffffff', letterSpacing: '-1px', lineHeight: 1 }}>
-          {showConverted ? formatConverted(convertedValue, to) : formatRate(app.rate, invertedRate ? from : to)}
-        </span>
+        {hasRate ? (
+          <span style={{ fontSize: showConverted ? 34 : 38, fontWeight: 800, color: '#ffffff', letterSpacing: '-1px', lineHeight: 1 }}>
+            {showConverted ? formatConverted(convertedValue, to) : formatRate(app.rate, invertedRate ? from : to)}
+          </span>
+        ) : (
+          <span style={{ fontSize: 20, fontWeight: 600, color: '#334155', letterSpacing: '-0.3px', lineHeight: 1 }}>
+            Rate unavailable
+          </span>
+        )}
       </div>
       <p style={{ fontSize: 12, color: '#475569', marginBottom: 14 }}>
-        {showConverted ? `Rate: ${formatRate(app.rate, invertedRate ? from : to)} ${rateLabel}` : rateLabel}
+        {hasRate && showConverted ? `Rate: ${formatRate(app.rate, invertedRate ? from : to)} ${rateLabel}` : rateLabel}
       </p>
 
       {/* Spread badge */}
-      <div style={{
-        display: 'inline-flex', alignItems: 'center', gap: 5,
-        background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)',
-        borderRadius: 6, padding: '5px 10px', marginBottom: 18, alignSelf: 'flex-start',
-      }}>
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={spreadColor(spread)} strokeWidth="2.5">
-          <polyline points="18 15 12 9 6 15"/>
-        </svg>
-        <span style={{ fontSize: 12, color: spreadColor(spread), fontWeight: 500 }}>
-          {Math.abs(spread).toFixed(1)}% {invertedRate ? 'above' : 'below'} mid-market
-        </span>
-      </div>
+      {hasRate ? (
+        <div style={{
+          display: 'inline-flex', alignItems: 'center', gap: 5,
+          background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)',
+          borderRadius: 6, padding: '5px 10px', marginBottom: 18, alignSelf: 'flex-start',
+        }}>
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={spreadColor(spread)} strokeWidth="2.5">
+            <polyline points="18 15 12 9 6 15"/>
+          </svg>
+          <span style={{ fontSize: 12, color: spreadColor(spread), fontWeight: 500 }}>
+            {Math.abs(spread).toFixed(1)}% {invertedRate ? 'above' : 'below'} mid-market
+          </span>
+        </div>
+      ) : (
+        <div style={{
+          display: 'inline-flex', alignItems: 'center', gap: 5,
+          background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)',
+          borderRadius: 6, padding: '5px 10px', marginBottom: 18, alignSelf: 'flex-start',
+        }}>
+          <span style={{ fontSize: 12, color: '#334155', fontWeight: 500 }}>Not yet updated</span>
+        </div>
+      )}
 
       {/* Vote area */}
       {hasVoted ? (
@@ -682,6 +713,12 @@ function RateCard({ app, midmarket, to, from, invertedRate, rateLabel, unitAmoun
           </svg>
           Works for me
         </button>
+      )}
+
+      {app.updatedAt && (
+        <p style={{ fontSize: 10, color: '#334155', marginTop: 8, textAlign: 'center' }}>
+          Updated {timeAgo(app.updatedAt)}
+        </p>
       )}
     </div>
   )
@@ -973,6 +1010,7 @@ export default function Home() {
   const [showFloating, setShowFloating]   = useState(false)
   const [fastAnim, setFastAnim]           = useState(false)
   const [liveMidmarkets, setLiveMidmarkets] = useState({})
+  const [platformsData, setPlatformsData] = useState([])
   const toggleRef                         = useRef(null)
 
   const corridorId    = `${fromCurrency}-${toCurrency}`
@@ -1024,6 +1062,18 @@ export default function Home() {
     }
     fetchMidmarkets()
     const timer = setInterval(fetchMidmarkets, 60_000)
+    return () => clearInterval(timer)
+  }, [])
+
+  useEffect(() => {
+    function fetchPlatforms() {
+      fetch('/api/platforms')
+        .then(r => r.json())
+        .then(data => { if (Array.isArray(data)) setPlatformsData(data) })
+        .catch(() => {})
+    }
+    fetchPlatforms()
+    const timer = setInterval(fetchPlatforms, 60_000)
     return () => clearInterval(timer)
   }, [])
 
@@ -1110,13 +1160,28 @@ export default function Home() {
   const communityRate = communityRates[corridorId] || { average: null, count: 0 }
 
   const effectiveMidmarket = liveMidmarkets[corridorId] ?? c.midmarket
-  const effectiveApps = c.apps.map(app => ({
-    ...app,
-    rate: effectiveMidmarket * (1 + app.margin / 100),
-  }))
+  const isSendingDir = fromCurrency === 'GBP' || fromCurrency === 'EUR'
+  const rateField = isSendingDir ? 'sending_rate' : 'receiving_rate'
+
+  const effectiveApps = c.apps.map(app => {
+    const dbPlatform = platformsData.find(p => p.corridor === corridorId && p.platform_id === app.id)
+    const dbRate = dbPlatform?.[rateField] ?? null
+    return {
+      ...app,
+      rate: dbRate,
+      updatedAt: dbPlatform?.updated_at ?? null,
+    }
+  })
   const effectiveC = { ...c, midmarket: effectiveMidmarket, apps: effectiveApps }
 
-  const rankedApps = [...effectiveApps].sort((a, b) => c.invertedRate ? a.rate - b.rate : b.rate - a.rate)
+  const rankedApps = [...effectiveApps].sort((a, b) => {
+    const aHas = a.rate !== null && a.rate !== undefined
+    const bHas = b.rate !== null && b.rate !== undefined
+    if (!aHas && !bHas) return 0
+    if (!aHas) return 1
+    if (!bHas) return -1
+    return c.invertedRate ? a.rate - b.rate : b.rate - a.rate
+  })
 
   const fadeIn = (delay) => ({
     animation: 'fadeUp 0.6s ease both',
