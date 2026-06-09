@@ -508,41 +508,6 @@ function CurrencyBar({ amount, fromCurrency, toCurrency, onAmountChange, onFromC
   )
 }
 
-function MidMarketBar({ c, direction }) {
-  const rateDisplay = c.invertedRate
-    ? `1 ${c.to} = ${formatRate(c.midmarket, c.from)} ${c.from}`
-    : c.unitAmount === 1
-      ? `1 ${c.from} = ${formatRate(c.midmarket, c.to)} ${c.to}`
-      : `${c.unitAmount.toLocaleString()} ${c.from} = ${formatRate(c.midmarket, c.to)} ${c.to}`
-  const blurb = direction === 'sending'
-    ? 'Every app below charges a spread on this. The gap is their fee.'
-    : c.invertedRate
-      ? `Apps charge a spread — the less ${c.from} you pay per ${c.to}, the better.`
-      : `Apps take a cut — the more ${c.to} you receive per unit sent, the better.`
-
-  return (
-    <div style={{ maxWidth: 900, margin: '0 auto', padding: '0 24px' }}>
-      <div style={{
-        background: 'rgba(59,130,246,0.07)', border: '1px solid rgba(59,130,246,0.2)',
-        borderRadius: 12, padding: '14px 20px',
-        display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#94a3b8' }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2">
-            <circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>
-          </svg>
-          <span>Mid-market rate</span>
-        </div>
-        <span style={{ fontSize: 15, fontWeight: 700, color: '#ffffff' }}>
-          {rateDisplay}
-        </span>
-        <span style={{ fontSize: 12, color: '#475569', marginLeft: 'auto' }}>
-          {blurb}
-        </span>
-      </div>
-    </div>
-  )
-}
 
 function VoteBar({ label, pct, color, isVoted }) {
   return (
@@ -1009,7 +974,6 @@ export default function Home() {
   const [voteLoading, setVoteLoading]     = useState(false)
   const [showFloating, setShowFloating]   = useState(false)
   const [fastAnim, setFastAnim]           = useState(false)
-  const [liveMidmarkets, setLiveMidmarkets] = useState({})
   const [platformsData, setPlatformsData] = useState([])
   const toggleRef                         = useRef(null)
 
@@ -1051,18 +1015,6 @@ export default function Home() {
   useEffect(() => {
     const t = setTimeout(() => setFastAnim(true), 1600)
     return () => clearTimeout(t)
-  }, [])
-
-  useEffect(() => {
-    function fetchMidmarkets() {
-      fetch('/api/midmarket')
-        .then(r => r.json())
-        .then(({ updatedAt: _discard, ...rates }) => setLiveMidmarkets(rates))
-        .catch(() => {})
-    }
-    fetchMidmarkets()
-    const timer = setInterval(fetchMidmarkets, 60_000)
-    return () => clearInterval(timer)
   }, [])
 
   useEffect(() => {
@@ -1159,9 +1111,7 @@ export default function Home() {
   const hasVoted      = !!votedApps[corridorId]
   const communityRate = communityRates[corridorId] || { average: null, count: 0 }
 
-  const effectiveMidmarket = liveMidmarkets[corridorId] ?? c.midmarket
-  const isSendingDir = fromCurrency === 'GBP' || fromCurrency === 'EUR'
-  const rateField = isSendingDir ? 'sending_rate' : 'receiving_rate'
+  const rateField = (fromCurrency === 'GBP' || fromCurrency === 'EUR') ? 'sending_rate' : 'receiving_rate'
 
   const effectiveApps = c.apps.map(app => {
     const dbPlatform = platformsData.find(p => p.corridor === corridorId && p.platform_id === app.id)
@@ -1172,7 +1122,6 @@ export default function Home() {
       updatedAt: dbPlatform?.updated_at ?? null,
     }
   })
-  const effectiveC = { ...c, midmarket: effectiveMidmarket, apps: effectiveApps }
 
   const rankedApps = [...effectiveApps].sort((a, b) => {
     const aHas = a.rate !== null && a.rate !== undefined
@@ -1239,11 +1188,6 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Mid-market bar */}
-      <div style={{ marginBottom: 28, ...fadeIn(620) }}>
-        <MidMarketBar c={effectiveC} direction={direction} />
-      </div>
-
       {/* Rate cards */}
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 24px 48px' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
@@ -1251,7 +1195,7 @@ export default function Home() {
             <RateCard
               key={`${corridorId}-${app.id}`}
               app={app}
-              midmarket={effectiveC.midmarket}
+              midmarket={c.midmarket}
               to={c.to}
               from={c.from}
               invertedRate={!!c.invertedRate}

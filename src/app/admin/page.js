@@ -118,8 +118,10 @@ function PlatformCard({ row, onSave }) {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          id:            row.id,
-          sending_rate:  parsedSending,
+          id:             row.id,
+          corridor:       row.corridor,
+          platform_id:    row.platform_id,
+          sending_rate:   parsedSending,
           receiving_rate: parsedReceiving,
           active,
         }),
@@ -559,44 +561,15 @@ function VotesTable() {
 // ── Sidebar ───────────────────────────────────────────────────────────────────
 
 function Sidebar() {
-  const [stats,      setStats]      = useState(null)
-  const [reloading,  setReloading]  = useState(false)
-  const [reloadMsg,  setReloadMsg]  = useState('')
-  const [countdown,  setCountdown]  = useState(null)
+  const [stats, setStats] = useState(null)
 
   const fetchStats = useCallback(async () => {
     const res  = await fetch('/api/admin/stats')
     const data = await res.json()
     setStats(data)
-    setCountdown(data.nextUpdateIn)
   }, [])
 
   useEffect(() => { fetchStats() }, [fetchStats])
-
-  // Tick the countdown every second
-  useEffect(() => {
-    if (countdown === null) return
-    if (countdown <= 0) return
-    const t = setTimeout(() => setCountdown(c => Math.max(0, c - 1)), 1000)
-    return () => clearTimeout(t)
-  }, [countdown])
-
-  async function handleReload() {
-    setReloading(true)
-    setReloadMsg('')
-    try {
-      const res  = await fetch('/api/admin/reload', { method: 'POST' })
-      const data = await res.json()
-      if (data.error) throw new Error(data.error)
-      setReloadMsg('Rates refreshed!')
-      fetchStats()
-      setCountdown(60)
-    } catch (e) {
-      setReloadMsg(e.message)
-    }
-    setReloading(false)
-    setTimeout(() => setReloadMsg(''), 4000)
-  }
 
   const statItems = [
     { label: 'Total Leads',      value: stats?.totalLeads      ?? '—' },
@@ -606,7 +579,6 @@ function Sidebar() {
 
   return (
     <div style={{ width: 260, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
-      {/* Stats */}
       <div style={S.card}>
         <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '1px', color: '#3b82f6', marginBottom: 14 }}>QUICK STATS</p>
         {statItems.map(s => (
@@ -615,50 +587,6 @@ function Sidebar() {
             <span style={{ fontSize: 18, fontWeight: 700, color: '#f1f5f9', fontVariantNumeric: 'tabular-nums' }}>{s.value}</span>
           </div>
         ))}
-      </div>
-
-      {/* Rate refresh status */}
-      <div style={S.card}>
-        <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '1px', color: '#3b82f6', marginBottom: 14 }}>MID-MARKET RATE</p>
-
-        <div style={{ marginBottom: 12 }}>
-          <p style={{ fontSize: 11, color: '#475569', marginBottom: 4 }}>Last updated</p>
-          <p style={{ fontSize: 12, color: '#94a3b8' }}>
-            {stats?.lastUpdated
-              ? new Date(stats.lastUpdated).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-              : <span style={{ color: '#334155' }}>Not yet refreshed</span>
-            }
-          </p>
-        </div>
-
-        {countdown !== null && (
-          <div style={{ marginBottom: 16 }}>
-            <p style={{ fontSize: 11, color: '#475569', marginBottom: 4 }}>Next auto-refresh in</p>
-            <p style={{ fontSize: 20, fontWeight: 700, color: countdown <= 10 ? '#f59e0b' : '#60a5fa', fontVariantNumeric: 'tabular-nums' }}>
-              {countdown}s
-            </p>
-          </div>
-        )}
-
-        <button
-          onClick={handleReload}
-          disabled={reloading}
-          style={{
-            ...S.btn,
-            width: '100%', textAlign: 'center',
-            background: reloading ? 'rgba(59,130,246,0.1)' : 'rgba(59,130,246,0.18)',
-            color: '#60a5fa', border: '1px solid rgba(59,130,246,0.35)',
-            opacity: reloading ? 0.7 : 1,
-          }}
-        >
-          {reloading ? 'Refreshing…' : '↺ Reload Rates Now'}
-        </button>
-
-        {reloadMsg && (
-          <p style={{ fontSize: 12, marginTop: 8, color: reloadMsg.includes('!') ? '#4ade80' : '#f87171', textAlign: 'center' }}>
-            {reloadMsg}
-          </p>
-        )}
       </div>
     </div>
   )
