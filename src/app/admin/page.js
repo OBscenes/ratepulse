@@ -113,18 +113,21 @@ function PlatformCard({ row, onSave }) {
   async function save() {
     setSaving(true)
     setErr('')
+    const payload = {
+      id:             row.id,
+      corridor:       row.corridor,
+      platform_id:    row.platform_id,
+      sending_rate:   parsedSending,
+      receiving_rate: parsedReceiving,
+      active,
+    }
+    console.log('[PlatformCard save] row identifiers → id:', row.id, 'corridor:', row.corridor, 'platform_id:', row.platform_id)
+    console.log('[PlatformCard save] full payload:', JSON.stringify(payload))
     try {
       const res = await fetch('/api/platforms', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id:             row.id,
-          corridor:       row.corridor,
-          platform_id:    row.platform_id,
-          sending_rate:   parsedSending,
-          receiving_rate: parsedReceiving,
-          active,
-        }),
+        body: JSON.stringify(payload),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Save failed')
@@ -240,12 +243,28 @@ function PlatformManager() {
   useEffect(() => {
     fetch('/api/platforms')
       .then(r => r.json())
-      .then(data => { setPlatforms(Array.isArray(data) ? data : []); setLoading(false) })
-      .catch(() => setLoading(false))
+      .then(data => {
+        const rows = Array.isArray(data) ? data : []
+        console.log('[PlatformManager] fetched', rows.length, 'platforms')
+        if (rows.length > 0) {
+          console.log('[PlatformManager] first row:', JSON.stringify({
+            id: rows[0].id,
+            corridor: rows[0].corridor,
+            platform_id: rows[0].platform_id,
+          }))
+        }
+        setPlatforms(rows)
+        setLoading(false)
+      })
+      .catch(err => {
+        console.error('[PlatformManager] fetch error:', err)
+        setLoading(false)
+      })
   }, [])
 
   function handleSave(updated) {
-    setPlatforms(prev => prev.map(p => p.id === updated.id ? updated : p))
+    // Use == (loose) so numeric 328 matches string "328" across JSON round-trips
+    setPlatforms(prev => prev.map(p => p.id == updated.id ? updated : p))
   }
 
   const corridor = fromCurrency && toCurrency ? `${fromCurrency}-${toCurrency}` : ''

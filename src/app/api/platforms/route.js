@@ -1,26 +1,41 @@
 import { NextResponse } from 'next/server'
-import supabase from '@/lib/supabase'
+import supabaseAdmin from '@/lib/supabaseAdmin'
 import { DEFAULT_PLATFORMS } from '@/lib/corridor-defaults'
 
 async function getOrSeedPlatforms() {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('platforms')
     .select('*')
     .order('corridor')
     .order('name')
 
-  if (error) throw error
+  if (error) {
+    console.error('[GET /api/platforms] DB select error:', error.message, error.code)
+    throw error
+  }
 
-  if (data.length > 0) return data
+  console.log('[GET /api/platforms] DB returned', data.length, 'rows')
+  if (data.length > 0) {
+    console.log('[GET /api/platforms] first row sample:', JSON.stringify({
+      id: data[0].id,
+      corridor: data[0].corridor,
+      platform_id: data[0].platform_id,
+    }))
+    return data
+  }
 
   // Seed from defaults on first call
-  const { error: seedErr } = await supabase
+  console.log('[GET /api/platforms] table empty — seeding with defaults')
+  const { error: seedErr } = await supabaseAdmin
     .from('platforms')
     .insert(DEFAULT_PLATFORMS)
 
-  if (seedErr) throw seedErr
+  if (seedErr) {
+    console.error('[GET /api/platforms] seed error:', seedErr.message)
+    throw seedErr
+  }
 
-  const { data: seeded } = await supabase
+  const { data: seeded } = await supabaseAdmin
     .from('platforms')
     .select('*')
     .order('corridor')
@@ -34,7 +49,7 @@ export async function GET() {
     const platforms = await getOrSeedPlatforms()
     return NextResponse.json(platforms)
   } catch (err) {
-    // DB not ready — return hardcoded defaults so main site still works
+    console.error('[GET /api/platforms] falling back to DEFAULT_PLATFORMS, reason:', err.message)
     return NextResponse.json(DEFAULT_PLATFORMS)
   }
 }
@@ -43,9 +58,13 @@ export async function PATCH(request) {
   try {
     const { id, corridor, platform_id, sending_rate, receiving_rate, active } = await request.json()
 
-    console.log('[platforms PATCH] received:', { id, corridor, platform_id, sending_rate, receiving_rate, active })
+    // Parse the numeric id explicitly — Supabase integer ids come through as numbers (328, 329 …)
+    const numericId = (id != null && !isNaN(Number(id))) ? Number(id) : null
 
-    if (!id && !(corridor && platform_id)) {
+    console.log('[PATCH /api/platforms] received → id:', id, '→ numericId:', numericId,
+      '| corridor:', corridor, '| platform_id:', platform_id)
+
+    if (numericId == null && !(corridor && platform_id)) {
       return NextResponse.json({ error: 'Missing id or corridor+platform_id' }, { status: 400 })
     }
 
@@ -54,19 +73,19 @@ export async function PATCH(request) {
     if (sending_rate   !== undefined) updates.sending_rate   = sending_rate   === null ? null : Number(sending_rate)
     if (receiving_rate !== undefined) updates.receiving_rate = receiving_rate === null ? null : Number(receiving_rate)
 
-    let rowId = id
+    let rowId = numericId
 
-    if (!rowId) {
-      // Log a DB sample so we can see actual stored values vs what we're searching
-      const { data: sample } = await supabase
+    if (rowId == null) {
+      // Log a DB sample to confirm actual stored values
+      const { data: sample } = await supabaseAdmin
         .from('platforms')
         .select('id, corridor, platform_id')
         .limit(5)
-      console.log('[platforms PATCH] DB sample:', JSON.stringify(sample))
-      console.log('[platforms PATCH] searching for corridor=%s platform_id=%s', corridor, platform_id)
+      console.log('[PATCH /api/platforms] DB sample:', JSON.stringify(sample))
+      console.log('[PATCH /api/platforms] searching corridor=%s platform_id=%s', corridor, platform_id)
 
       // 1. Exact match
-      const { data: found, error: findErr } = await supabase
+      const { data: found, error: findErr } = await supabaseAdmin
         .from('platforms')
         .select('id')
         .eq('corridor', corridor)
@@ -74,53 +93,49 @@ export async function PATCH(request) {
         .limit(1)
 
       if (findErr) {
-        console.error('[platforms PATCH] find error:', findErr)
+        console.error('[PATCH /api/platforms] find error:', findErr.message)
         return NextResponse.json({ error: findErr.message }, { status: 500 })
       }
 
       if (found && found.length > 0) {
         rowId = found[0].id
-        console.log('[platforms PATCH] exact match rowId:', rowId)
+        console.log('[PATCH /api/platforms] exact match → rowId:', rowId)
       } else {
-        // 2. Case-insensitive fallback (handles gbp-ngn vs GBP-NGN mismatches)
-        console.log('[platforms PATCH] exact match failed, trying case-insensitive')
-        const { data: foundCI } = await supabase
+        // 2. Case-insensitive fallback
+        console.log('[PATCH /api/platforms] exact match failed, trying ilike')
+        const { data: foundCI } = await supabaseAdmin
           .from('platforms')
           .select('id, corridor, platform_id')
           .ilike('corridor', corridor)
           .ilike('platform_id', platform_id)
           .limit(1)
 
-        console.log('[platforms PATCH] case-insensitive result:', JSON.stringify(foundCI))
-
-        if (foundCI && foundCI.length > 0) {
-          rowId = foundCI[0].id
-        }
+        console.log('[PATCH /api/platforms] ilike result:', JSON.stringify(foundCI))
+        if (foundCI && foundCI.length > 0) rowId = foundCI[0].id
       }
     }
 
-    // If still no rowId the table may not have an `id` column — fall back to
-    // updating directly by corridor + platform_id and return the first affected row.
-    if (!rowId) {
-      console.log('[platforms PATCH] no id column found — updating by corridor+platform_id directly')
-      const { data: rows, error: updateErr } = await supabase
+    // 3. If still no resolved id, update directly by corridor+platform_id
+    if (rowId == null) {
+      console.log('[PATCH /api/platforms] no id resolved — updating by corridor+platform_id directly')
+      const { data: rows, error: directErr } = await supabaseAdmin
         .from('platforms')
         .update(updates)
         .eq('corridor', corridor)
         .eq('platform_id', platform_id)
         .select()
 
-      if (updateErr) {
-        console.error('[platforms PATCH] direct update error:', updateErr)
+      if (directErr) {
+        console.error('[PATCH /api/platforms] direct update error:', directErr.message)
         return NextResponse.json({
-          error: updateErr.message,
+          error: directErr.message,
           debug: { corridor, platform_id },
         }, { status: 500 })
       }
 
       if (!rows || rows.length === 0) {
         return NextResponse.json({
-          error: 'Platform not found — no matching row for corridor+platform_id',
+          error: 'Platform not found',
           debug: { corridor, platform_id },
         }, { status: 404 })
       }
@@ -128,7 +143,9 @@ export async function PATCH(request) {
       return NextResponse.json(rows[0])
     }
 
-    const { data, error } = await supabase
+    // Happy path: update by numeric id
+    console.log('[PATCH /api/platforms] updating by id:', rowId)
+    const { data, error } = await supabaseAdmin
       .from('platforms')
       .update(updates)
       .eq('id', rowId)
@@ -136,13 +153,13 @@ export async function PATCH(request) {
       .single()
 
     if (error) {
-      console.error('[platforms PATCH] update by id error:', error)
+      console.error('[PATCH /api/platforms] update error:', error.message)
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
     return NextResponse.json(data)
   } catch (err) {
-    console.error('[platforms PATCH] unhandled error:', err)
+    console.error('[PATCH /api/platforms] unhandled error:', err)
     return NextResponse.json({ error: err.message }, { status: 500 })
   }
 }
