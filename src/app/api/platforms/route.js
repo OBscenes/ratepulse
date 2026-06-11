@@ -60,6 +60,43 @@ export async function GET() {
   }
 }
 
+export async function POST(request) {
+  try {
+    const { name, platform_id, color, corridors } = await request.json()
+
+    if (!name || !platform_id || !corridors?.length) {
+      return NextResponse.json({ error: 'name, platform_id, and corridors are required' }, { status: 400 })
+    }
+
+    const rows = corridors.map(corridor => ({
+      corridor:       corridor.toLowerCase().trim(),
+      platform_id:    platform_id.toLowerCase().trim(),
+      name:           name.trim(),
+      color:          color || '#60a5fa',
+      active:         true,
+      sending_rate:   null,
+      receiving_rate: null,
+    }))
+
+    console.log('[POST /api/platforms] inserting', rows.length, 'rows for platform_id:', platform_id)
+
+    const { data, error } = await supabaseAdmin
+      .from('platforms')
+      .upsert(rows, { onConflict: 'corridor,platform_id', ignoreDuplicates: true })
+      .select()
+
+    if (error) {
+      console.error('[POST /api/platforms] error:', error.message)
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
+    return NextResponse.json(data)
+  } catch (err) {
+    console.error('[POST /api/platforms] unhandled:', err)
+    return NextResponse.json({ error: err.message }, { status: 500 })
+  }
+}
+
 export async function PATCH(request) {
   try {
     const { id, corridor, platform_id, sending_rate, receiving_rate, active } = await request.json()

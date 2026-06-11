@@ -12,6 +12,18 @@ const DIASPORA_CURRENCIES = ['GBP', 'USD', 'CAD', 'EUR']
 const AFRICAN_CURRENCIES  = ['NGN', 'GHS', 'KES']
 const CURRENCY_FLAGS = { GBP: '🇬🇧', EUR: '🇪🇺', CAD: '🇨🇦', USD: '🇺🇸', NGN: '🇳🇬', GHS: '🇬🇭', KES: '🇰🇪' }
 
+const ALL_12_CORRIDORS = [
+  'gbp-ngn', 'gbp-ghs', 'gbp-kes',
+  'usd-ngn', 'usd-ghs', 'usd-kes',
+  'cad-ngn', 'cad-ghs', 'cad-kes',
+  'eur-ngn', 'eur-ghs', 'eur-kes',
+]
+
+function corridorDisplayLabel(c) {
+  const [from, to] = c.toUpperCase().split('-')
+  return `${CURRENCY_FLAGS[from] ?? ''} ${from} → ${CURRENCY_FLAGS[to] ?? ''} ${to}`
+}
+
 function corridorLabel(c) {
   const [from, to] = c.split('-')
   return `${CURRENCY_FLAGS[from] ?? ''}${from} → ${CURRENCY_FLAGS[to] ?? ''}${to}`
@@ -92,43 +104,59 @@ function AdminNav({ activeTab, onTabChange }) {
   )
 }
 
-// ── Platform Manager ──────────────────────────────────────────────────────────
-
 function PlatformCard({ row, onSave }) {
   const [sendingRate,   setSendingRate]   = useState(row.sending_rate   != null ? String(row.sending_rate)   : '')
   const [receivingRate, setReceivingRate] = useState(row.receiving_rate != null ? String(row.receiving_rate) : '')
   const [active,    setActive]    = useState(row.active)
   const [saving,    setSaving]    = useState(false)
   const [saved,     setSaved]     = useState(false)
+  const [toggling,  setToggling]  = useState(false)
   const [err,       setErr]       = useState('')
   const [updatedAt, setUpdatedAt] = useState(row.updated_at ?? null)
 
   const parsedSending   = sendingRate   === '' ? null : (isNaN(Number(sendingRate))   ? null : Number(sendingRate))
   const parsedReceiving = receivingRate === '' ? null : (isNaN(Number(receivingRate)) ? null : Number(receivingRate))
 
+  // Availability is saved instantly on toggle — only rate changes need the Save button
   const dirty =
     parsedSending   !== (row.sending_rate   ?? null) ||
-    parsedReceiving !== (row.receiving_rate ?? null) ||
-    active !== row.active
+    parsedReceiving !== (row.receiving_rate ?? null)
 
-  async function save() {
-    setSaving(true)
+  async function toggleAvailability() {
+    const newActive = !active
+    setActive(newActive)
+    setToggling(true)
     setErr('')
-    const payload = {
-      id:             row.id,
-      corridor:       row.corridor,
-      platform_id:    row.platform_id,
-      sending_rate:   parsedSending,
-      receiving_rate: parsedReceiving,
-      active,
-    }
-    console.log('[PlatformCard save] row identifiers → id:', row.id, 'corridor:', row.corridor, 'platform_id:', row.platform_id)
-    console.log('[PlatformCard save] full payload:', JSON.stringify(payload))
     try {
       const res = await fetch('/api/platforms', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ id: row.id, corridor: row.corridor, platform_id: row.platform_id, active: newActive }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Toggle failed')
+      onSave(data)
+    } catch (e) {
+      setActive(!newActive) // revert on error
+      setErr(e.message)
+    }
+    setToggling(false)
+  }
+
+  async function save() {
+    setSaving(true)
+    setErr('')
+    try {
+      const res = await fetch('/api/platforms', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id:             row.id,
+          corridor:       row.corridor,
+          platform_id:    row.platform_id,
+          sending_rate:   parsedSending,
+          receiving_rate: parsedReceiving,
+        }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Save failed')
@@ -162,24 +190,34 @@ function PlatformCard({ row, onSave }) {
   return (
     <div style={{
       background: '#0a0a17',
-      border: `1px solid ${active ? 'rgba(255,255,255,0.08)' : 'rgba(248,113,113,0.15)'}`,
+      border: `1px solid ${active ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.03)'}`,
       borderRadius: 12, padding: '16px 16px 12px',
       display: 'flex', flexDirection: 'column', gap: 0,
+      opacity: active ? 1 : 0.5,
+      transition: 'opacity 0.2s, border-color 0.2s',
     }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
         <span style={{ width: 10, height: 10, borderRadius: '50%', background: row.color, flexShrink: 0, boxShadow: `0 0 6px ${row.color}80` }} />
         <span style={{ fontWeight: 600, color: '#f1f5f9', fontSize: 14, flex: 1 }}>{row.name}</span>
+        {/* Per-corridor availability toggle — saves immediately */}
         <button
-          onClick={() => setActive(a => !a)}
-          style={{
-            ...S.btn, padding: '3px 10px', fontSize: 10, fontWeight: 700, letterSpacing: '0.5px',
-            background: active ? 'rgba(74,222,128,0.12)' : 'rgba(248,113,113,0.12)',
-            color: active ? '#4ade80' : '#f87171',
-            border: `1px solid ${active ? 'rgba(74,222,128,0.3)' : 'rgba(248,113,113,0.3)'}`,
-          }}
+          onClick={toggleAvailability}
+          disabled={toggling}
+          title={active ? 'Hide from users on this corridor' : 'Show to users on this corridor'}
+          style={{ background: 'none', border: 'none', cursor: toggling ? 'wait' : 'pointer', padding: 0, opacity: toggling ? 0.5 : 1, flexShrink: 0 }}
         >
-          {active ? 'ON' : 'OFF'}
+          <div style={{
+            width: 34, height: 19, borderRadius: 10, position: 'relative',
+            background: active ? '#4ade80' : 'rgba(255,255,255,0.14)',
+            transition: 'background 0.2s',
+          }}>
+            <div style={{
+              position: 'absolute', top: 2.5, left: active ? 17 : 2.5,
+              width: 14, height: 14, borderRadius: '50%', background: '#fff',
+              transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.4)',
+            }} />
+          </div>
         </button>
       </div>
 
@@ -209,7 +247,7 @@ function PlatformCard({ row, onSave }) {
         style={{ ...rateInputStyle, marginBottom: 14 }}
       />
 
-      {/* Save */}
+      {/* Save rates */}
       <button
         onClick={save}
         disabled={!dirty || saving}
@@ -223,7 +261,7 @@ function PlatformCard({ row, onSave }) {
           opacity: saving ? 0.7 : 1,
         }}
       >
-        {saving ? 'Saving…' : saved ? '✓ Saved' : 'Save'}
+        {saving ? 'Saving…' : saved ? '✓ Saved' : 'Save Rates'}
       </button>
 
       {err && <p style={{ fontSize: 11, color: '#f87171', marginTop: 6, textAlign: 'center' }}>{err}</p>}
@@ -235,11 +273,155 @@ function PlatformCard({ row, onSave }) {
   )
 }
 
+// ── Add Platform Modal ────────────────────────────────────────────────────────
+
+function AddPlatformModal({ onClose, onAdded }) {
+  const [name,              setName]              = useState('')
+  const [platformId,        setPlatformId]        = useState('')
+  const [idTouched,         setIdTouched]         = useState(false)
+  const [color,             setColor]             = useState('#60a5fa')
+  const [selectedCorridors, setSelectedCorridors] = useState(new Set(ALL_12_CORRIDORS))
+  const [saving,            setSaving]            = useState(false)
+  const [err,               setErr]               = useState('')
+
+  useEffect(() => {
+    if (!idTouched) setPlatformId(name.toLowerCase().replace(/[^a-z0-9]/g, ''))
+  }, [name])
+
+  function toggleCorridor(c) {
+    setSelectedCorridors(prev => {
+      const next = new Set(prev)
+      next.has(c) ? next.delete(c) : next.add(c)
+      return next
+    })
+  }
+
+  async function handleSave() {
+    if (!name.trim() || !platformId.trim()) { setErr('Platform name and ID are required.'); return }
+    if (selectedCorridors.size === 0)        { setErr('Select at least one corridor.');       return }
+    setSaving(true)
+    setErr('')
+    try {
+      const res = await fetch('/api/platforms', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({
+          name:        name.trim(),
+          platform_id: platformId.trim(),
+          color,
+          corridors:   [...selectedCorridors],
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to add platform')
+      onAdded(Array.isArray(data) ? data : [data])
+    } catch (e) {
+      setErr(e.message)
+    }
+    setSaving(false)
+  }
+
+  const fl = { display: 'block', marginBottom: 6, fontSize: 10, fontWeight: 700, letterSpacing: '0.8px', color: '#475569', textTransform: 'uppercase' }
+  const fi = { ...S.input, width: '100%', boxSizing: 'border-box', fontSize: 14 }
+  const canSave = !saving && name.trim() && platformId.trim() && selectedCorridors.size > 0
+
+  return (
+    <div
+      style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.78)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+      onClick={onClose}
+    >
+      <div
+        style={{ background: '#0d0d1a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, padding: '26px 28px', width: '100%', maxWidth: 540, maxHeight: '92vh', overflowY: 'auto' }}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Title */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+          <h3 style={{ fontSize: 16, fontWeight: 700, color: '#f1f5f9' }}>Add Platform</h3>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#475569', cursor: 'pointer', fontSize: 20, lineHeight: 1, padding: 0 }}>✕</button>
+        </div>
+
+        {/* Name */}
+        <label style={fl}>Platform Name</label>
+        <input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. LemFi" style={{ ...fi, marginBottom: 14 }} />
+
+        {/* ID */}
+        <label style={fl}>
+          Platform ID{' '}
+          <span style={{ color: '#334155', textTransform: 'none', fontWeight: 400, letterSpacing: 0 }}>— auto-generated, editable</span>
+        </label>
+        <input
+          value={platformId}
+          onChange={e => { setPlatformId(e.target.value); setIdTouched(true) }}
+          placeholder="e.g. lemfi"
+          style={{ ...fi, marginBottom: 14, fontFamily: 'monospace' }}
+        />
+
+        {/* Color */}
+        <label style={fl}>Color</label>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+          <input
+            type="color" value={color} onChange={e => setColor(e.target.value)}
+            style={{ width: 40, height: 38, border: 'none', background: 'none', cursor: 'pointer', padding: 2, borderRadius: 6, flexShrink: 0 }}
+          />
+          <input value={color} onChange={e => setColor(e.target.value)} placeholder="#60a5fa" style={{ ...fi }} />
+        </div>
+
+        {/* Corridors */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+          <label style={{ ...fl, marginBottom: 0 }}>
+            Corridors <span style={{ color: '#334155', textTransform: 'none', fontWeight: 400, letterSpacing: 0 }}>({selectedCorridors.size} selected)</span>
+          </label>
+          <div style={{ display: 'flex', gap: 6 }}>
+            {[['All', () => setSelectedCorridors(new Set(ALL_12_CORRIDORS))], ['None', () => setSelectedCorridors(new Set())]].map(([label, fn]) => (
+              <button key={label} onClick={fn} style={{ ...S.btn, padding: '3px 10px', fontSize: 11, background: 'rgba(255,255,255,0.05)', color: '#64748b', border: '1px solid rgba(255,255,255,0.09)' }}>{label}</button>
+            ))}
+          </div>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 22 }}>
+          {ALL_12_CORRIDORS.map(c => {
+            const checked = selectedCorridors.has(c)
+            return (
+              <label key={c} style={{
+                display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer',
+                padding: '7px 10px', borderRadius: 8, userSelect: 'none',
+                background: checked ? 'rgba(59,130,246,0.1)' : 'rgba(255,255,255,0.03)',
+                border: `1px solid ${checked ? 'rgba(59,130,246,0.28)' : 'rgba(255,255,255,0.07)'}`,
+                fontSize: 12, color: checked ? '#93c5fd' : '#64748b',
+              }}>
+                <input type="checkbox" checked={checked} onChange={() => toggleCorridor(c)} style={{ accentColor: '#3b82f6', width: 13, height: 13, flexShrink: 0 }} />
+                {corridorDisplayLabel(c)}
+              </label>
+            )
+          })}
+        </div>
+
+        {err && <p style={{ fontSize: 12, color: '#f87171', marginBottom: 14 }}>{err}</p>}
+
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button onClick={onClose} style={{ ...S.btn, flex: 1, background: 'rgba(255,255,255,0.04)', color: '#475569', border: '1px solid rgba(255,255,255,0.08)' }}>
+            Cancel
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={!canSave}
+            style={{ ...S.btn, flex: 2, textAlign: 'center', background: 'rgba(59,130,246,0.18)', color: '#60a5fa', border: '1px solid rgba(59,130,246,0.38)', opacity: canSave ? 1 : 0.45 }}
+          >
+            {saving ? 'Adding…' : `Add to ${selectedCorridors.size} corridor${selectedCorridors.size !== 1 ? 's' : ''}`}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Platform Manager ──────────────────────────────────────────────────────────
+
 function PlatformManager() {
   const [platforms,    setPlatforms]    = useState([])
   const [loading,      setLoading]      = useState(true)
   const [fromCurrency, setFromCurrency] = useState('GBP')
   const [toCurrency,   setToCurrency]   = useState('NGN')
+  const [showAddModal, setShowAddModal] = useState(false)
 
   useEffect(() => {
     fetch('/api/platforms')
@@ -264,8 +446,16 @@ function PlatformManager() {
   }, [])
 
   function handleSave(updated) {
-    // Use == (loose) so numeric 328 matches string "328" across JSON round-trips
     setPlatforms(prev => prev.map(p => p.id == updated.id ? updated : p))
+  }
+
+  function handleAdded(newRows) {
+    setPlatforms(prev => {
+      const existing = new Set(prev.map(p => `${p.corridor}|${p.platform_id}`))
+      const toAdd = newRows.filter(r => !existing.has(`${r.corridor}|${r.platform_id}`))
+      return [...prev, ...toAdd]
+    })
+    setShowAddModal(false)
   }
 
   const corridor = fromCurrency && toCurrency ? `${fromCurrency}-${toCurrency}` : ''
@@ -280,7 +470,19 @@ function PlatformManager() {
 
   return (
     <div style={S.card}>
-      <h2 style={{ fontSize: 16, fontWeight: 700, color: '#f1f5f9', marginBottom: 20 }}>Platform Manager</h2>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+        <h2 style={{ fontSize: 16, fontWeight: 700, color: '#f1f5f9' }}>Platform Manager</h2>
+        <button
+          onClick={() => setShowAddModal(true)}
+          style={{
+            ...S.btn, background: 'rgba(59,130,246,0.15)', color: '#60a5fa',
+            border: '1px solid rgba(59,130,246,0.35)',
+            display: 'flex', alignItems: 'center', gap: 6, fontSize: 13,
+          }}
+        >
+          <span style={{ fontSize: 18, lineHeight: 1, fontWeight: 300 }}>+</span> Add Platform
+        </button>
+      </div>
 
       {/* Dual currency selectors */}
       <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, marginBottom: 20 }}>
@@ -323,6 +525,8 @@ function PlatformManager() {
           </div>
         </>
       )}
+
+      {showAddModal && <AddPlatformModal onClose={() => setShowAddModal(false)} onAdded={handleAdded} />}
     </div>
   )
 }
