@@ -1127,12 +1127,19 @@ export default function Home() {
   const hasVoted      = !!votedApps[corridorId]
   const communityRate = communityRates[corridorId] || { average: null, count: 0 }
 
-  const rateField = (fromCurrency === 'GBP' || fromCurrency === 'EUR') ? 'sending_rate' : 'receiving_rate'
+  // DB always stores rows as diaspora→africa (e.g. 'gbp-ngn'), never the reverse.
+  // Receiving mode flips the UI corridor (NGN→GBP) but must still read the gbp-ngn row.
+  const DIASPORA_SET = new Set(['GBP', 'EUR', 'CAD', 'USD'])
+  const isSending    = DIASPORA_SET.has(fromCurrency)
+  const rateField    = isSending ? 'sending_rate' : 'receiving_rate'
+  // Canonical DB key: always diaspora-africa in lowercase
+  const dbCorridorKey = isSending
+    ? `${fromCurrency}-${toCurrency}`.toLowerCase()
+    : `${toCurrency}-${fromCurrency}`.toLowerCase()
 
-  const corridorIdUpper = corridorId.toUpperCase()
   const effectiveApps = c.apps.map(app => {
     const dbPlatform = platformsData.find(
-      p => (p.corridor ?? '').toUpperCase() === corridorIdUpper &&
+      p => (p.corridor ?? '').toLowerCase() === dbCorridorKey &&
            (p.platform_id ?? '').toLowerCase() === app.id.toLowerCase()
     )
     const dbRate = dbPlatform?.[rateField] ?? null
