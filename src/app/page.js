@@ -1021,7 +1021,23 @@ export default function Home() {
     function fetchPlatforms() {
       fetch('/api/platforms')
         .then(r => r.json())
-        .then(data => { if (Array.isArray(data)) setPlatformsData(data) })
+        .then(data => {
+          if (Array.isArray(data)) {
+            console.log('[RatePulse] /api/platforms returned', data.length, 'rows')
+            if (data.length > 0) {
+              const sample = data[0]
+              console.log('[RatePulse] first row:', JSON.stringify({
+                corridor: sample.corridor,
+                platform_id: sample.platform_id,
+                sending_rate: sample.sending_rate,
+                receiving_rate: sample.receiving_rate,
+              }))
+              const corridors = [...new Set(data.map(r => r.corridor))]
+              console.log('[RatePulse] unique corridors:', corridors)
+            }
+            setPlatformsData(data)
+          }
+        })
         .catch(() => {})
     }
     fetchPlatforms()
@@ -1113,8 +1129,12 @@ export default function Home() {
 
   const rateField = (fromCurrency === 'GBP' || fromCurrency === 'EUR') ? 'sending_rate' : 'receiving_rate'
 
+  const corridorIdUpper = corridorId.toUpperCase()
   const effectiveApps = c.apps.map(app => {
-    const dbPlatform = platformsData.find(p => p.corridor === corridorId && p.platform_id === app.id)
+    const dbPlatform = platformsData.find(
+      p => (p.corridor ?? '').toUpperCase() === corridorIdUpper &&
+           (p.platform_id ?? '').toLowerCase() === app.id.toLowerCase()
+    )
     const dbRate = dbPlatform?.[rateField] ?? null
     return {
       ...app,
