@@ -8,8 +8,9 @@ import {
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const CURRENCIES     = ['GBP', 'EUR', 'CAD', 'USD', 'NGN', 'GHS']
-const CURRENCY_FLAGS = { GBP: '🇬🇧', EUR: '🇪🇺', CAD: '🇨🇦', USD: '🇺🇸', NGN: '🇳🇬', GHS: '🇬🇭' }
+const DIASPORA_CURRENCIES = ['GBP', 'USD', 'CAD', 'EUR']
+const AFRICAN_CURRENCIES  = ['NGN', 'GHS', 'KES']
+const CURRENCY_FLAGS = { GBP: '🇬🇧', EUR: '🇪🇺', CAD: '🇨🇦', USD: '🇺🇸', NGN: '🇳🇬', GHS: '🇬🇭', KES: '🇰🇪' }
 
 function corridorLabel(c) {
   const [from, to] = c.split('-')
@@ -273,24 +274,31 @@ function PlatformManager() {
     ? platforms.filter(p => (p.corridor ?? '').toUpperCase() === corridorUpper)
     : []
 
-  const flagLabel  = c => `${CURRENCY_FLAGS[c] ?? ''} ${c}`
-  const selectStyle = { ...S.input, cursor: 'pointer', fontWeight: 600, fontSize: 14, width: 110 }
+  const flagLabel   = c => `${CURRENCY_FLAGS[c] ?? ''} ${c}`
+  const selectStyle = { ...S.input, cursor: 'pointer', fontWeight: 600, fontSize: 14, width: 120 }
+  const labelStyle  = { display: 'block', fontSize: 10, fontWeight: 700, letterSpacing: '0.8px', color: '#475569', textTransform: 'uppercase', marginBottom: 5 }
 
   return (
     <div style={S.card}>
       <h2 style={{ fontSize: 16, fontWeight: 700, color: '#f1f5f9', marginBottom: 20 }}>Platform Manager</h2>
 
       {/* Dual currency selectors */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
-        <select value={fromCurrency} onChange={e => setFromCurrency(e.target.value)} style={selectStyle}>
-          {CURRENCIES.map(c => <option key={c} value={c}>{flagLabel(c)}</option>)}
-        </select>
+      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, marginBottom: 20 }}>
+        <div>
+          <label style={labelStyle}>Diaspora Countries</label>
+          <select value={fromCurrency} onChange={e => setFromCurrency(e.target.value)} style={selectStyle}>
+            {DIASPORA_CURRENCIES.map(c => <option key={c} value={c}>{flagLabel(c)}</option>)}
+          </select>
+        </div>
 
-        <span style={{ color: '#3b82f6', fontSize: 16, fontWeight: 700, userSelect: 'none' }}>→</span>
+        <span style={{ color: '#3b82f6', fontSize: 16, fontWeight: 700, userSelect: 'none', paddingBottom: 8 }}>→</span>
 
-        <select value={toCurrency} onChange={e => setToCurrency(e.target.value)} style={selectStyle}>
-          {CURRENCIES.map(c => <option key={c} value={c}>{flagLabel(c)}</option>)}
-        </select>
+        <div>
+          <label style={labelStyle}>African Countries</label>
+          <select value={toCurrency} onChange={e => setToCurrency(e.target.value)} style={selectStyle}>
+            {AFRICAN_CURRENCIES.map(c => <option key={c} value={c}>{flagLabel(c)}</option>)}
+          </select>
+        </div>
       </div>
 
       {fromCurrency === toCurrency ? (
