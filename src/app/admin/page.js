@@ -268,7 +268,10 @@ function PlatformManager() {
   }
 
   const corridor = fromCurrency && toCurrency ? `${fromCurrency}-${toCurrency}` : ''
-  const cards    = corridor ? platforms.filter(p => p.corridor === corridor) : []
+  const corridorUpper = corridor.toUpperCase()
+  const cards    = corridor
+    ? platforms.filter(p => (p.corridor ?? '').toUpperCase() === corridorUpper)
+    : []
 
   const flagLabel  = c => `${CURRENCY_FLAGS[c] ?? ''} ${c}`
   const selectStyle = { ...S.input, cursor: 'pointer', fontWeight: 600, fontSize: 14, width: 110 }

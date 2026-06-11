@@ -2,54 +2,60 @@ import { NextResponse } from 'next/server'
 import supabaseAdmin from '@/lib/supabaseAdmin'
 import { DEFAULT_PLATFORMS } from '@/lib/corridor-defaults'
 
-async function getOrSeedPlatforms() {
+async function fetchAllPlatforms() {
+  // order('corridor') only — avoids errors if column 'name' has a different name in the DB
   const { data, error } = await supabaseAdmin
     .from('platforms')
     .select('*')
     .order('corridor')
-    .order('name')
 
   if (error) {
-    console.error('[GET /api/platforms] DB select error:', error.message, error.code)
+    console.error('[GET /api/platforms] DB select error:', error.message, 'code:', error.code)
     throw error
   }
 
   console.log('[GET /api/platforms] DB returned', data.length, 'rows')
   if (data.length > 0) {
-    console.log('[GET /api/platforms] first row sample:', JSON.stringify({
+    // Log all unique corridor values so we can spot case/format mismatches
+    const corridors = [...new Set(data.map(r => r.corridor))]
+    console.log('[GET /api/platforms] unique corridors in DB:', JSON.stringify(corridors))
+    console.log('[GET /api/platforms] first row:', JSON.stringify({
       id: data[0].id,
       corridor: data[0].corridor,
       platform_id: data[0].platform_id,
     }))
-    return data
   }
 
-  // Seed from defaults on first call
-  console.log('[GET /api/platforms] table empty — seeding with defaults')
-  const { error: seedErr } = await supabaseAdmin
-    .from('platforms')
-    .insert(DEFAULT_PLATFORMS)
-
-  if (seedErr) {
-    console.error('[GET /api/platforms] seed error:', seedErr.message)
-    throw seedErr
-  }
-
-  const { data: seeded } = await supabaseAdmin
-    .from('platforms')
-    .select('*')
-    .order('corridor')
-    .order('name')
-
-  return seeded || DEFAULT_PLATFORMS
+  return data
 }
 
 export async function GET() {
   try {
-    const platforms = await getOrSeedPlatforms()
-    return NextResponse.json(platforms)
+    const data = await fetchAllPlatforms()
+
+    if (data.length === 0) {
+      // Seed from defaults on first call
+      console.log('[GET /api/platforms] table empty — seeding with defaults')
+      const { error: seedErr } = await supabaseAdmin
+        .from('platforms')
+        .insert(DEFAULT_PLATFORMS)
+
+      if (seedErr) {
+        console.error('[GET /api/platforms] seed error:', seedErr.message)
+        return NextResponse.json(DEFAULT_PLATFORMS)
+      }
+
+      const { data: seeded } = await supabaseAdmin
+        .from('platforms')
+        .select('*')
+        .order('corridor')
+
+      return NextResponse.json(seeded || DEFAULT_PLATFORMS)
+    }
+
+    return NextResponse.json(data)
   } catch (err) {
-    console.error('[GET /api/platforms] falling back to DEFAULT_PLATFORMS, reason:', err.message)
+    console.error('[GET /api/platforms] error, falling back to DEFAULT_PLATFORMS:', err.message)
     return NextResponse.json(DEFAULT_PLATFORMS)
   }
 }
