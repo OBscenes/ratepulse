@@ -1137,24 +1137,30 @@ export default function Home() {
     ? `${fromCurrency}-${toCurrency}`.toLowerCase()
     : `${toCurrency}-${fromCurrency}`.toLowerCase()
 
-  const effectiveApps = c.apps.map(app => {
-    const dbPlatform = platformsData.find(
-      p => (p.corridor ?? '').toLowerCase() === dbCorridorKey &&
-           (p.platform_id ?? '').toLowerCase() === app.id.toLowerCase()
-    )
-    const dbRate = dbPlatform?.[rateField] ?? null
-    return {
-      ...app,
-      rate: dbRate,
-      updatedAt: dbPlatform?.updated_at ?? null,
-    }
-  })
+  // Build platform list dynamically from Supabase — any platform added via admin
+  // automatically appears here without touching this file.
+  const corridorPlatforms = platformsData.filter(
+    p => (p.corridor ?? '').toLowerCase() === dbCorridorKey && p.active !== false
+  )
+
+  console.log(
+    `[RatePulse] corridor=${dbCorridorKey} rateField=${rateField}`,
+    `active platforms:`, corridorPlatforms.map(p => p.platform_id)
+  )
+
+  const effectiveApps = corridorPlatforms.map(p => ({
+    id:        p.platform_id,
+    name:      p.name,
+    color:     p.color || '#60a5fa',
+    rate:      p[rateField] ?? null,
+    updatedAt: p.updated_at ?? null,
+  }))
 
   const rankedApps = [...effectiveApps].sort((a, b) => {
     const aHas = a.rate !== null && a.rate !== undefined
     const bHas = b.rate !== null && b.rate !== undefined
     if (!aHas && !bHas) return 0
-    if (!aHas) return 1
+    if (!aHas) return 1   // null rates sink to the bottom
     if (!bHas) return -1
     return c.invertedRate ? a.rate - b.rate : b.rate - a.rate
   })
