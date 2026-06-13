@@ -60,6 +60,34 @@ const CORRIDORS = {
       { id: 'westernunion', name: 'Western Union', margin: -4.4872, color: '#fbbf24' },
     ],
   },
+  'USD-NGN': {
+    id: 'USD-NGN', label: 'USD → NGN',
+    from: 'USD', fromFlag: '🇺🇸', to: 'NGN', toFlag: '🇳🇬',
+    midmarket: 1600, unitAmount: 1,
+    rateLabel: 'NGN per 1 USD', ratePlaceholder: 'e.g. 1580',
+    apps: [],
+  },
+  'USD-GHS': {
+    id: 'USD-GHS', label: 'USD → GHS',
+    from: 'USD', fromFlag: '🇺🇸', to: 'GHS', toFlag: '🇬🇭',
+    midmarket: 15.8, unitAmount: 1,
+    rateLabel: 'GHS per 1 USD', ratePlaceholder: 'e.g. 15.50',
+    apps: [],
+  },
+  'CAD-NGN': {
+    id: 'CAD-NGN', label: 'CAD → NGN',
+    from: 'CAD', fromFlag: '🇨🇦', to: 'NGN', toFlag: '🇳🇬',
+    midmarket: 1200, unitAmount: 1,
+    rateLabel: 'NGN per 1 CAD', ratePlaceholder: 'e.g. 1180',
+    apps: [],
+  },
+  'CAD-GHS': {
+    id: 'CAD-GHS', label: 'CAD → GHS',
+    from: 'CAD', fromFlag: '🇨🇦', to: 'GHS', toFlag: '🇬🇭',
+    midmarket: 11.6, unitAmount: 1,
+    rateLabel: 'GHS per 1 CAD', ratePlaceholder: 'e.g. 11.40',
+    apps: [],
+  },
 }
 
 const RECEIVE_CORRIDORS = {
@@ -119,22 +147,58 @@ const RECEIVE_CORRIDORS = {
       { id: 'westernunion', name: 'Western Union', margin: -5.2262, color: '#fbbf24' },
     ],
   },
+  'NGN-USD': {
+    id: 'NGN-USD', label: 'NGN → USD',
+    from: 'NGN', fromFlag: '🇳🇬', to: 'USD', toFlag: '🇺🇸',
+    midmarket: 1600, unitAmount: 1,
+    invertedRate: true,
+    rateLabel: 'NGN per 1 USD', ratePlaceholder: 'e.g. 1620',
+    apps: [],
+  },
+  'GHS-USD': {
+    id: 'GHS-USD', label: 'GHS → USD',
+    from: 'GHS', fromFlag: '🇬🇭', to: 'USD', toFlag: '🇺🇸',
+    midmarket: 63.3, unitAmount: 1000,
+    rateLabel: 'USD per 1,000 GHS', ratePlaceholder: 'e.g. 62.50',
+    apps: [],
+  },
+  'NGN-CAD': {
+    id: 'NGN-CAD', label: 'NGN → CAD',
+    from: 'NGN', fromFlag: '🇳🇬', to: 'CAD', toFlag: '🇨🇦',
+    midmarket: 1200, unitAmount: 1,
+    invertedRate: true,
+    rateLabel: 'NGN per 1 CAD', ratePlaceholder: 'e.g. 1220',
+    apps: [],
+  },
+  'GHS-CAD': {
+    id: 'GHS-CAD', label: 'GHS → CAD',
+    from: 'GHS', fromFlag: '🇬🇭', to: 'CAD', toFlag: '🇨🇦',
+    midmarket: 86.2, unitAmount: 1000,
+    rateLabel: 'CAD per 1,000 GHS', ratePlaceholder: 'e.g. 85.00',
+    apps: [],
+  },
 }
 
 const ALL_CORRIDORS = { ...CORRIDORS, ...RECEIVE_CORRIDORS }
 
 const CURRENCY_META = {
-  GBP: { symbol: '£', flag: '🇬🇧', name: 'British Pound',  decimals: 2 },
-  EUR: { symbol: '€', flag: '🇪🇺', name: 'Euro',           decimals: 2 },
-  NGN: { symbol: '₦', flag: '🇳🇬', name: 'Nigerian Naira', decimals: 0 },
-  GHS: { symbol: '₵', flag: '🇬🇭', name: 'Ghanaian Cedi',  decimals: 2 },
+  GBP: { symbol: '£',   flag: '🇬🇧', name: 'British Pound',    decimals: 2 },
+  EUR: { symbol: '€',   flag: '🇪🇺', name: 'Euro',             decimals: 2 },
+  USD: { symbol: '$',   flag: '🇺🇸', name: 'US Dollar',        decimals: 2 },
+  CAD: { symbol: 'CA$', flag: '🇨🇦', name: 'Canadian Dollar',  decimals: 2 },
+  NGN: { symbol: '₦',   flag: '🇳🇬', name: 'Nigerian Naira',   decimals: 0 },
+  GHS: { symbol: '₵',   flag: '🇬🇭', name: 'Ghanaian Cedi',    decimals: 2 },
 }
+
+const DIASPORA_SET = new Set(['GBP', 'EUR', 'USD', 'CAD'])
 
 const VALID_DESTINATIONS = {
   GBP: ['NGN', 'GHS'],
   EUR: ['NGN', 'GHS'],
-  NGN: ['GBP', 'EUR'],
-  GHS: ['GBP', 'EUR'],
+  USD: ['NGN', 'GHS'],
+  CAD: ['NGN', 'GHS'],
+  NGN: ['GBP', 'EUR', 'USD', 'CAD'],
+  GHS: ['GBP', 'EUR', 'USD', 'CAD'],
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -414,11 +478,11 @@ function CurrencySelect({ value, onChange, currencies }) {
   )
 }
 
-function CurrencyBar({ amount, fromCurrency, toCurrency, onAmountChange, onFromChange, onToChange, onSwap }) {
+function CurrencyBar({ amount, fromCurrency, toCurrency, onAmountChange, onFromChange, onToChange, onSwap, diasporaCurrencies }) {
   const fromMeta  = CURRENCY_META[fromCurrency]
-  const isSending = fromCurrency === 'GBP' || fromCurrency === 'EUR'
-  const leftOpts  = isSending ? ['GBP', 'EUR'] : ['NGN', 'GHS']
-  const rightOpts = isSending ? ['NGN', 'GHS'] : ['GBP', 'EUR']
+  const isSending = DIASPORA_SET.has(fromCurrency)
+  const leftOpts  = isSending ? diasporaCurrencies : ['NGN', 'GHS']
+  const rightOpts = isSending ? ['NGN', 'GHS'] : diasporaCurrencies
 
   return (
     <div style={{
@@ -975,12 +1039,20 @@ export default function Home() {
   const [showFloating, setShowFloating]   = useState(false)
   const [fastAnim, setFastAnim]           = useState(false)
   const [platformsData, setPlatformsData] = useState([])
+  const [currencySettings, setCurrencySettings] = useState([
+    { currency: 'GBP', visible: true },
+    { currency: 'EUR', visible: true },
+    { currency: 'USD', visible: true },
+    { currency: 'CAD', visible: true },
+  ])
   const toggleRef                         = useRef(null)
 
   const corridorId    = `${fromCurrency}-${toCurrency}`
   const c             = ALL_CORRIDORS[corridorId]
-  const direction     = (fromCurrency === 'GBP' || fromCurrency === 'EUR') ? 'sending' : 'receiving'
+  const direction     = DIASPORA_SET.has(fromCurrency) ? 'sending' : 'receiving'
   const numericAmount = parseFloat(amount) || 0
+
+  const visibleDiasporaCurrencies = currencySettings.filter(s => s.visible).map(s => s.currency)
 
   function handleFromChange(newFrom) {
     if (newFrom === toCurrency) {
@@ -1016,6 +1088,27 @@ export default function Home() {
     const t = setTimeout(() => setFastAnim(true), 1600)
     return () => clearTimeout(t)
   }, [])
+
+  useEffect(() => {
+    fetch('/api/currency-settings')
+      .then(r => r.json())
+      .then(data => { if (Array.isArray(data)) setCurrencySettings(data) })
+      .catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    if (visibleDiasporaCurrencies.length === 0) return
+    const visibleSet = new Set(visibleDiasporaCurrencies)
+    if (DIASPORA_SET.has(fromCurrency) && !visibleSet.has(fromCurrency)) {
+      const fallback = visibleDiasporaCurrencies[0]
+      setFromCurrency(fallback)
+      if (!VALID_DESTINATIONS[fallback].includes(toCurrency)) {
+        setToCurrency(VALID_DESTINATIONS[fallback][0])
+      }
+    } else if (!DIASPORA_SET.has(fromCurrency) && !visibleSet.has(toCurrency)) {
+      setToCurrency(visibleDiasporaCurrencies[0])
+    }
+  }, [visibleDiasporaCurrencies])
 
   useEffect(() => {
     function fetchPlatforms() {
@@ -1129,8 +1222,7 @@ export default function Home() {
 
   // DB always stores rows as diaspora→africa (e.g. 'gbp-ngn'), never the reverse.
   // Receiving mode flips the UI corridor (NGN→GBP) but must still read the gbp-ngn row.
-  const DIASPORA_SET = new Set(['GBP', 'EUR', 'CAD', 'USD'])
-  const isSending    = DIASPORA_SET.has(fromCurrency)
+  const isSending = DIASPORA_SET.has(fromCurrency)
   const rateField    = isSending ? 'sending_rate' : 'receiving_rate'
   // Canonical DB key: always diaspora-africa in lowercase
   const dbCorridorKey = isSending
@@ -1217,6 +1309,7 @@ export default function Home() {
             onFromChange={handleFromChange}
             onToChange={handleToChange}
             onSwap={handleSwap}
+            diasporaCurrencies={visibleDiasporaCurrencies}
           />
         </div>
       </div>

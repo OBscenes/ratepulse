@@ -792,6 +792,74 @@ function VotesTable() {
   )
 }
 
+// ── Currency Visibility ───────────────────────────────────────────────────────
+
+function CurrencyVisibility() {
+  const [settings, setSettings] = useState([
+    { currency: 'GBP', visible: true },
+    { currency: 'EUR', visible: true },
+    { currency: 'USD', visible: true },
+    { currency: 'CAD', visible: true },
+  ])
+  const [saving, setSaving] = useState(null)
+
+  useEffect(() => {
+    fetch('/api/currency-settings')
+      .then(r => r.json())
+      .then(data => { if (Array.isArray(data)) setSettings(data) })
+      .catch(() => {})
+  }, [])
+
+  async function toggle(currency) {
+    const current = settings.find(s => s.currency === currency)
+    if (!current) return
+    const newVisible = !current.visible
+    setSettings(prev => prev.map(s => s.currency === currency ? { ...s, visible: newVisible } : s))
+    setSaving(currency)
+    try {
+      const res = await fetch('/api/currency-settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currency, visible: newVisible }),
+      })
+      if (!res.ok) throw new Error('Save failed')
+    } catch {
+      setSettings(prev => prev.map(s => s.currency === currency ? { ...s, visible: !newVisible } : s))
+    }
+    setSaving(null)
+  }
+
+  return (
+    <div style={S.card}>
+      <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '1px', color: '#3b82f6', marginBottom: 14 }}>CURRENCY VISIBILITY</p>
+      {settings.map(s => (
+        <div key={s.currency} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <span style={{ fontSize: 12, color: '#475569' }}>
+            {CURRENCY_FLAGS[s.currency]} {s.currency}
+          </span>
+          <button
+            onClick={() => toggle(s.currency)}
+            disabled={saving === s.currency}
+            style={{ background: 'none', border: 'none', cursor: saving === s.currency ? 'wait' : 'pointer', padding: 0, opacity: saving === s.currency ? 0.5 : 1 }}
+          >
+            <div style={{
+              width: 34, height: 19, borderRadius: 10, position: 'relative',
+              background: s.visible ? '#4ade80' : 'rgba(255,255,255,0.14)',
+              transition: 'background 0.2s',
+            }}>
+              <div style={{
+                position: 'absolute', top: 2.5, left: s.visible ? 17 : 2.5,
+                width: 14, height: 14, borderRadius: '50%', background: '#fff',
+                transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.4)',
+              }} />
+            </div>
+          </button>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 // ── Sidebar ───────────────────────────────────────────────────────────────────
 
 function Sidebar() {
@@ -822,6 +890,7 @@ function Sidebar() {
           </div>
         ))}
       </div>
+      <CurrencyVisibility />
     </div>
   )
 }
